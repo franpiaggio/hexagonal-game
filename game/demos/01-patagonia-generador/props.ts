@@ -61,72 +61,6 @@ function flowers(kind: 'lupin' | 'daisy') {
   return mergeGeometries(parts.map((p) => p.toNonIndexed()))!
 }
 
-/**
- * Soft rounded cluster of lumps (smooth-shaded spheres, gently displaced): reads as a cushion of
- * grass or a neneo bush at miniature scale, with no spikes or facets. Colour runs from a dark,
- * shadowed base to a sunlit top, which also fakes contact occlusion with the ground.
- */
-function cushion(lumps: { x: number; z: number; r: number; h: number }[], dark: Color, light: Color, seed: number) {
-  const parts: BufferGeometry[] = []
-  const top = Math.max(...lumps.map((l) => l.h))
-  const c = new Color()
-  lumps.forEach((l, k) => {
-    const g = new SphereGeometry(l.r, 12, 8)
-    const pos = g.getAttribute('position')
-    const colors = new Float32Array(pos.count * 3)
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i)
-      const y = pos.getY(i)
-      const z = pos.getZ(i)
-      // Low-frequency bumps only: lumpy silhouette, still smooth.
-      const bump = 1 + 0.1 * Math.sin(x * 70 + seed + k) * Math.cos(z * 63 - y * 41 + seed)
-      const wy = Math.max(-0.2 * l.r, y) * (l.h / l.r)
-      pos.setXYZ(i, l.x + x * bump, wy * bump + l.h * 0.15, l.z + z * bump)
-      const t = Math.min(1, Math.max(0, (wy + l.h * 0.15) / (top * 1.1)))
-      c.copy(dark).lerp(light, t * t * (3 - 2 * t))
-      // A touch of per-vertex variation so clusters aren't flat-coloured.
-      c.multiplyScalar(0.94 + 0.12 * (0.5 + 0.5 * Math.sin(i * 12.9898 + seed * 7.1)))
-      colors.set([c.r, c.g, c.b], i * 3)
-    }
-    g.setAttribute('color', new BufferAttribute(colors, 3))
-    g.deleteAttribute('uv')
-    g.computeVertexNormals()
-    parts.push(g)
-  })
-  return mergeGeometries(parts)!
-}
-
-/** Low grass cushion (replaces spiky blade clumps). */
-function grassCushion() {
-  return cushion(
-    [
-      { x: 0, z: 0, r: 0.034, h: 0.03 },
-      { x: 0.03, z: 0.012, r: 0.024, h: 0.022 },
-      { x: -0.022, z: 0.022, r: 0.022, h: 0.02 },
-      { x: 0.006, z: -0.028, r: 0.02, h: 0.018 },
-    ],
-    new Color('#3f5a2a'),
-    new Color('#8fa257'),
-    1.7,
-  )
-}
-
-/** Neneo-style bush: a rounder, taller cluster in muted olive. */
-function shrub() {
-  return cushion(
-    [
-      { x: 0, z: 0, r: 0.06, h: 0.055 },
-      { x: 0.05, z: 0.02, r: 0.045, h: 0.042 },
-      { x: -0.045, z: 0.03, r: 0.042, h: 0.04 },
-      { x: 0.01, z: -0.05, r: 0.04, h: 0.036 },
-      { x: -0.03, z: -0.03, r: 0.035, h: 0.03 },
-    ],
-    new Color('#34472a'),
-    new Color('#7d8a4c'),
-    4.2,
-  )
-}
-
 function pebbles() {
   const parts: BufferGeometry[] = []
   const tones = [new Color('#8d8a80'), new Color('#a29d90'), new Color('#76736b')]
@@ -146,7 +80,10 @@ function pebbles() {
   return mergeGeometries(parts)!
 }
 
-export function createPropGeometries(): Record<PropKind, BufferGeometry> {
+/** Ground clutter built here; the leafy kinds (tuft, shrub) are cut from the kit's own trees. */
+export type BuiltPropKind = Exclude<PropKind, 'tuft' | 'shrub'>
+
+export function createPropGeometries(): Record<BuiltPropKind, BufferGeometry> {
   // Thin parts (stems, reeds) stay flat-shaded; rounded parts keep their smooth normals.
   const flat = (g: BufferGeometry) => {
     const out = g.index ? g.toNonIndexed() : g
@@ -154,8 +91,6 @@ export function createPropGeometries(): Record<PropKind, BufferGeometry> {
     return out
   }
   return {
-    tuft: grassCushion(),
-    shrub: shrub(),
     lupin: flat(flowers('lupin')),
     daisy: flat(flowers('daisy')),
     pebble: pebbles(),

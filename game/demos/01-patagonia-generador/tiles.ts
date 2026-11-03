@@ -36,7 +36,7 @@ import {
   mood,
 } from './materials'
 import { BASE_TOP, WATER_LEVEL } from './terrain'
-import { createPropGeometries, scatterOnKit, type Spot } from './props'
+import { createPropGeometries, scatterOnKit, type PropKind, type Spot } from './props'
 import { unpack, type CustomCells } from './terrain-pool'
 import type { Quality } from './quality'
 
@@ -94,6 +94,47 @@ function bakeQuantization(mesh: Mesh) {
 }
 
 const baseName = (name: string) => name.replace(/^Miniatura · /, '').replace(/\.\d+$/, '')
+
+/**
+ * A bush from a chunk of a kit tree's foliage: the `count` leaf triangles nearest to a seed
+ * triangle (picked at `seedFrac` through the mesh), re-based on the ground and scaled to `height`.
+ */
+function harvestFoliage(source: BufferGeometry, seedFrac: number, count: number, height: number) {
+  const g = source.index ? source.toNonIndexed() : source
+  const pos = g.getAttribute('position')
+  const tris = Math.floor(pos.count / 3)
+  const v = new Vector3()
+  const centre = (t: number, out: Vector3) => {
+    out.set(0, 0, 0)
+    for (let k = 0; k < 3; k++) out.add(v.fromBufferAttribute(pos, t * 3 + k))
+    return out.divideScalar(3)
+  }
+  const seed = centre(Math.floor(seedFrac * tris), new Vector3())
+  const c = new Vector3()
+  const picked = Array.from({ length: tris }, (_, t) => ({ t, d: centre(t, c).distanceToSquared(seed) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, count)
+    .map((e) => e.t)
+  const out = new BufferGeometry()
+  for (const [name, attr] of Object.entries(g.attributes)) {
+    const size = attr.itemSize
+    const data = new Float32Array(picked.length * 3 * size)
+    picked.forEach((t, j) => {
+      for (let k = 0; k < 3; k++) for (let s = 0; s < size; s++) data[(j * 3 + k) * size + s] = attr.getComponent(t * 3 + k, s)
+    })
+    out.setAttribute(name, new BufferAttribute(data, size))
+  }
+  out.computeBoundingBox()
+  const box = out.boundingBox!
+  out.translate(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2)
+  // Scale by the largest extent (a flat chunk must not be blown up to the target height).
+  const scale = height / Math.max(1e-3, box.max.y - box.min.y, (box.max.x - box.min.x) * 0.6, (box.max.z - box.min.z) * 0.6)
+  out.scale(scale, scale, scale)
+  // Sit slightly into the ground so the lowest cards never float.
+  out.translate(0, -height * 0.12, 0)
+  out.computeBoundingBox()
+  return out
+}
 
 /**
  * Slender lenga/cypress-style conifer (~300 triangles), vertex coloured to sit next to the kit's
@@ -190,8 +231,16 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
   const conifer = createConiferGeometry()
 
   // Ground clutter spots per kit tile, found once by raycasting the tile's own meshes.
-  const propGeometry = createPropGeometries()
+  // Bushes are cut from the kit's own lenga canopy (real leaf cards, texture and material), so
+  // they match the trees instead of looking like a different, smoother art style.
+  const lengaPart = parts.get('bosque')!.find((p) => p.material.name === 'hojas de lenga')!
+  const propGeometry: Record<PropKind, BufferGeometry> = {
+    ...createPropGeometries(),
+    tuft: harvestFoliage(lengaPart.geometry, 0.37, 60, 0.09),
+    shrub: harvestFoliage(lengaPart.geometry, 0.71, 160, 0.17),
+  }
   const propMaterial = createPropMaterial()
+  const leafy = (kind: PropKind) => kind === 'tuft' || kind === 'shrub'
   const KIT_PROPS: Partial<Record<KitTile, number>> = { pradera: 150, caserio: 110, bosque: 30 }
   const kitSpots = new Map<KitTile, Spot[]>()
   for (const [id, count] of Object.entries(KIT_PROPS) as [KitTile, number][]) {
@@ -235,7 +284,8 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
           rot.setFromAxisAngle(Y_AXIS, sp.r),
           new Vector3(sp.s, sp.s, sp.s),
         )
-        add(`prop:${sp.kind}`, propGeometry[sp.kind], propMaterial, { tile: i, pre: around.clone().multiply(local), prop: [1, 1, 1] }, false)
+        const material = leafy(sp.kind) ? lengaPart.material : propMaterial
+        add(`prop:${sp.kind}`, propGeometry[sp.kind], material, { tile: i, pre: around.clone().multiply(local), prop: [1, 1, 1] }, leafy(sp.kind))
       })
     }
 
