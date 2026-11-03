@@ -50,7 +50,8 @@ import { TILE_RADIUS, loadKit, type Board } from './tiles'
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!
 // A stalled GPU process can leave requestAdapter() pending forever (seen in Chrome under memory
 // pressure): give WebGPU a few seconds, then start on the WebGL2 backend instead of a black page.
-const webgpuReady = await Promise.race([
+// `?webgl` forces the fallback backend (for testing what weak or WebGPU-less devices get).
+const webgpuReady = !new URLSearchParams(window.location.search).has('webgl') && await Promise.race([
   navigator.gpu?.requestAdapter().then((a) => !!a, () => false) ?? Promise.resolve(false),
   new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
 ])
@@ -342,11 +343,9 @@ async function showLandscape(i: number) {
   // Compile pipelines and set up GPU state off the critical frame, instead of on the first
   // frame the board is drawn (a visible hitch whenever a material combination is new).
   const hide = board.warmup()
-  try {
-    await renderer.compileAsync(board.group, camera, scene)
-  } catch {
-    // Older backends: compile lazily on first draw instead.
-  }
+  // Bounded: a wedged GPU process (or a backend without parallel compile) must never keep the
+  // landscape off screen. Whatever isn't compiled in time compiles on first draw instead.
+  await Promise.race([renderer.compileAsync(board.group, camera, scene).catch(() => {}), new Promise((resolve) => setTimeout(resolve, 1500))])
   hide()
   if (token !== buildToken) {
     board.dispose()
