@@ -283,8 +283,10 @@ const RISE_DEPTH = 3.2
 const RISE_TIME = 1.0
 const GROW_DELAY = 0.3
 const GROW_TIME = 0.75
-const EXIT_TIME = 0.85
-const EXIT_WINDOW = 0.9
+const EXIT_TIME = 0.7
+const EXIT_WINDOW = 1.0
+/** How far a leaving cell has sunk before the new one may rise there (deep and small by then). */
+const EXIT_GATE = EXIT_TIME * 0.7
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 const easeInOutSine = (x: number) => -(Math.cos(Math.PI * x) - 1) / 2
@@ -341,9 +343,10 @@ async function showLandscape(i: number) {
   const busy = leaving.length > 0
   shows.push({
     board,
-    start: busy ? Math.max(now(), requested + EXIT_TIME * 0.85) : now() + 0.2,
+    // No global wait for the old board: `notBefore` already holds each tile until its cell is clear.
+    start: busy ? Math.max(now(), requested + 0.1) : now() + 0.2,
     exitStart: null,
-    window: 1.1 + board.tiles.length * 0.014,
+    window: 0.9 + board.tiles.length * 0.012,
     tilts: board.tiles.map(() => [(Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3]),
     ring: board.tiles.map((t) => Math.hypot(t.x, t.z) / Math.max(1e-3, radius - 2)),
     // A tile rises only after every leaving board has sunk the ring it sits on, so the
@@ -353,7 +356,7 @@ async function showLandscape(i: number) {
       let at = 0
       for (const o of leaving) {
         const r = boardRadiusOf(o.board) - 2
-        at = Math.max(at, o.exitStart! + EXIT_WINDOW * Math.min(1, d / Math.max(1e-3, r)) + EXIT_TIME * 0.85)
+        at = Math.max(at, o.exitStart! + EXIT_WINDOW * Math.min(1, d / Math.max(1e-3, r)) + EXIT_GATE)
       }
       return at
     }),
