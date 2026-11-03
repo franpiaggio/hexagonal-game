@@ -4,7 +4,7 @@ title: Presupuesto de performance y estrategia de render
 type: wayfinder:grilling
 status: open
 assignee:
-blocked_by: [0005, 0006, 0008]
+blocked_by: [0005, 0006, 0008, 0011]
 ---
 
 ## Question

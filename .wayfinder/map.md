@@ -25,13 +25,19 @@ Una spec técnica lista para implementar del motor visual del juego: stack y ren
 
 <!-- one line per closed ticket -->
 
+- [Grilla hexagonal vs cuadrada con offset](tickets/0001-grilla-hex-vs-cuadrada.md): la investigación recomienda hex (axial + array con offset, rotación de 60°); el costo de variantes se mitiga con malla continua o WFC en la grilla dual.
+- [WebGPURenderer vs WebGLRenderer](tickets/0002-renderer-webgpu-vs-webgl.md): la investigación recomienda WebGPURenderer + TSL con fallback a WebGL2; las draw calls son caras, así que hay que agrupar por chunk; condición de salida: spike en Android de gama media.
+- [Algoritmos de generación procedural de mapas](tickets/0004-algoritmos-generacion-mapas.md): pipeline en worker: FBM+warp, Priority-Flood para ríos, biomas tipo Whittaker, WFC por bloques solo para piezas y Poisson para props; no hay WFC hex en JS.
+- [Técnicas de tilt-shift realista](tickets/0003-tilt-shift-realista.md): la investigación recomienda DoF por profundidad (no banda), escalado por tier (gaussiano a media resolución en mobile, `dof()` TSL en desktop) y perspectiva con FOV ~25°.
+- [Técnicas de optimización para 10k tiles en three.js](tickets/0005-tecnicas-optimizacion-10k-tiles.md): la investigación indica que el límite son las draw calls; propone chunks + InstancedMesh/BatchedMesh, KTX2 + meshopt, ≤100–200 draws en mobile y una sombra cacheada.
+- [Pipeline de assets y kits CC0 realistas](tickets/0006-pipeline-assets-realistas.md): ningún kit CC0 sirve tal cual para el look realista; propone texturas PBR CC0 sobre geometría propia y un pipeline Blender .glb → gltf-transform (meshopt + KTX2).
+
 ## Not yet specified
 
 - **Modelo de datos del mapa**: cómo se guardan los tiles, si se divide en chunks y cómo se manejan mapas mutables. Depende de la grilla y de los patrones de render; el género todavía no está definido.
 - **Iluminación y atmósfera**: sol, sombras (cascadas, baked o mezcla), ciclo día/noche, niebla y color grading para el look de maqueta realista.
 - **Elementos vivos**: agua, vegetación con viento, partículas. Shaders y su costo.
 - **Interacción**: picking de tiles (raycast vs cálculo analítico en la grilla), hover y selección.
-- **Generación en workers y determinismo**: semilla reproducible, generación off-main-thread y streaming.
 - **Arquitectura del runtime**: game loop, ECS o no, organización de sistemas.
 - **Herramientas de perfilado y CI de performance**: stats, captura de GPU y budgets automatizados.
 
