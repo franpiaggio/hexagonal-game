@@ -236,7 +236,7 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
   const lengaPart = parts.get('bosque')!.find((p) => p.material.name === 'hojas de lenga')!
   const propGeometry: Record<PropKind, BufferGeometry> = {
     ...createPropGeometries(),
-    tuft: harvestFoliage(lengaPart.geometry, 0.37, 60, 0.09),
+    tuft: harvestFoliage(lengaPart.geometry, 0.37, 40, 0.09),
     shrub: harvestFoliage(lengaPart.geometry, 0.71, 160, 0.17),
   }
   const propMaterial = createPropMaterial()
@@ -285,7 +285,7 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
           new Vector3(sp.s, sp.s, sp.s),
         )
         const material = leafy(sp.kind) ? lengaPart.material : propMaterial
-        add(`prop:${sp.kind}`, propGeometry[sp.kind], material, { tile: i, pre: around.clone().multiply(local), prop: [1, 1, 1] }, leafy(sp.kind))
+        add(`prop:${sp.kind}`, propGeometry[sp.kind], material, { tile: i, pre: around.clone().multiply(local), prop: [1, 1, 1] }, sp.kind === 'shrub')
       })
     }
 
@@ -350,7 +350,7 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
         parts.get(tile)!.forEach((part, p) => {
           if (part.ground && c > 0) return
           // Extra forest copies skip the trunks (~12k tris each), mostly hidden by the needles.
-          if (c > 0 && tile === 'bosque' && part.material.name === 'madera') return
+          if ((c > 0 || placement.lite) && tile === 'bosque' && part.material.name === 'madera') return
           add(`${tile}:${p}`, part.geometry, part.material, {
             tile: i,
             pre,

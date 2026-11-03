@@ -116,6 +116,7 @@ export function padLandscape(landscape: Landscape, pad: number): Landscape {
       mirror: false,
       scale,
       copies: 1,
+      lite: true,
       // After the composed landscape, rippling outwards.
       reveal: 0.86 + 0.14 * Math.min(1, near.d / (pad + 1)),
     })

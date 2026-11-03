@@ -24,6 +24,8 @@ export type Placement = {
   reveal: number
   /** Overrides the spec's forest / village copies (filler tiles stay light). */
   copies?: number
+  /** Filler around a full-bleed board: drawn lighter (no forest trunks under the canopy). */
+  lite?: boolean
 }
 
 export type River = { points: [number, number][]; halfWidth: number }

@@ -67,7 +67,7 @@ function pebbles() {
   for (let i = 0; i < 3; i++) {
     const s = 0.035 - i * 0.008
     // Smooth, slightly irregular river stones (rounded, not faceted).
-    const rock = new SphereGeometry(s, 10, 7).scale(1, 0.5, 0.8)
+    const rock = new SphereGeometry(s, 7, 4).scale(1, 0.5, 0.8)
     const pos = rock.getAttribute('position')
     for (let v = 0; v < pos.count; v++) {
       const k = 1 + 0.08 * Math.sin(pos.getX(v) * 160 + i) * Math.cos(pos.getZ(v) * 140 - i)
