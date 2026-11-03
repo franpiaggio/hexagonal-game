@@ -40,9 +40,9 @@ import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js'
 import { generateLandscape, specForIndex } from './generator'
 import { mood as moodUniforms } from './materials'
 import { MOODS, type Mood } from './moods'
-import { createField } from './terrain'
+import { buildCustomCells } from './terrain-pool'
 import { padLandscape } from './fullscreen'
-import { loadKit, type Board } from './tiles'
+import { TILE_RADIUS, loadKit, type Board } from './tiles'
 
 // --- Renderer -------------------------------------------------------------------------
 
@@ -255,7 +255,7 @@ const vignette = smoothstep(0.38, 1.0, length(screenUV.sub(0.5).mul(vec2(1.2, 1.
 // hash() takes a scalar: fold both screen axes and time into one seed (a vec2 would only use x → stripes).
 const grain = hash(screenUV.x.mul(1913.7).add(screenUV.y.mul(7919.3)).add(time.mul(13.17))).sub(0.5).mul(0.016)
 pipeline.outputNode = vec4(graded.mul(mix(float(1), float(0.82), vignette)).add(vec3(grain)), 1)
-if (import.meta.env.DEV) Object.assign(window, { __post: { pipeline, sceneColor, occluded, blurred, hdr, aoPass, renderOutput, focusDistance, focalLength, camera } })
+if (import.meta.env.DEV) Object.assign(window, { __post: { pipeline, sceneColor, occluded, blurred, hdr, aoPass, renderOutput, focusDistance, focalLength, camera, scene, sun } })
 
 // --- Landscapes --------------------------------------------------------------------------
 
@@ -298,12 +298,17 @@ const boardRadiusOf = (board: Board) => Math.max(...board.tiles.map((t) => Math.
 /** Camera distance for the live landscape; recomputed on resize. */
 let frame = () => distanceGoal
 
-function showLandscape(i: number) {
+let buildToken = 0
+async function showLandscape(i: number) {
+  const token = ++buildToken
+  const requested = now()
   const composed = generateLandscape(specForIndex(i))
   const PAD = 3
   const landscape = fullBleed ? padLandscape(composed, PAD) : composed
-  const field = createField(landscape, 2)
-  const board = kit.buildBoard(landscape, field)
+  // Terrain cells build in workers while the old board sinks; a newer click supersedes this one.
+  const cells = await buildCustomCells(landscape, TILE_RADIUS)
+  if (token !== buildToken) return
+  const board = kit.buildBoard(landscape, cells)
   scene.add(board.group)
 
   const radius = boardRadiusOf(board)
@@ -333,7 +338,7 @@ function showLandscape(i: number) {
   const busy = leaving.length > 0
   shows.push({
     board,
-    start: now() + (busy ? EXIT_TIME * 0.85 : 0.2),
+    start: busy ? Math.max(now(), requested + EXIT_TIME * 0.85) : now() + 0.2,
     exitStart: null,
     window: 1.6 + board.tiles.length * 0.022,
     tilts: board.tiles.map(() => [(Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3]),
@@ -360,8 +365,9 @@ const SETTLE_SECONDS = 7
 function next() {
   for (const s of shows) if (s.exitStart === null) s.exitStart = now()
   index++
-  showLandscape(index)
+  void showLandscape(index)
   lastAdvance = now()
+  lastChange = now()
 }
 
 function animateShow(s: Show, t: number) {
@@ -485,7 +491,7 @@ window.addEventListener('resize', () => {
 // --- Loop --------------------------------------------------------------------------------
 
 let last = now()
-showLandscape(index)
+await showLandscape(index)
 current = cloneMood(targetMood)
 distance = distanceGoal * 1.15
 focus.copy(focusGoal)

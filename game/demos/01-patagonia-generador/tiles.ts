@@ -8,6 +8,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   ConeGeometry,
+  Color,
   CylinderGeometry,
   Group,
   InstancedMesh,
@@ -34,8 +35,9 @@ import {
   createWaterMaterial,
   mood,
 } from './materials'
-import { BASE_TOP, WATER_LEVEL, buildCustomTile, type Field } from './terrain'
-import { createPropGeometries, scatterOnField, scatterOnKit, type Spot } from './props'
+import { BASE_TOP, WATER_LEVEL } from './terrain'
+import { createPropGeometries, scatterOnKit, type Spot } from './props'
+import { unpack, type CustomCells } from './terrain-pool'
 
 export const TILE_RADIUS = 2
 const BASE_HEIGHT = 1.6
@@ -91,22 +93,49 @@ function bakeQuantization(mesh: Mesh) {
 
 const baseName = (name: string) => name.replace(/^Miniatura · /, '').replace(/\.\d+$/, '')
 
-/** ~60-triangle conifer: trunk + three stacked cones, vertex coloured. */
+/**
+ * Slender lenga/cypress-style conifer (~300 triangles), vertex coloured to sit next to the kit's
+ * needle trees: many short drooping tiers with a jagged rim, a thin spire and muted olive needles.
+ */
 function createConiferGeometry() {
-  const paint = (g: BufferGeometry, r: number, gr: number, b: number) => {
-    const colors = new Float32Array(g.getAttribute('position').count * 3)
-    for (let i = 0; i < colors.length; i += 3) colors.set([r, gr, b], i)
+  const paint = (g: BufferGeometry, inner: Color, rim: Color) => {
+    const pos = g.getAttribute('position')
+    const colors = new Float32Array(pos.count * 3)
+    for (let i = 0; i < pos.count; i++) {
+      const c = Math.hypot(pos.getX(i), pos.getZ(i)) > 0.01 ? rim : inner
+      colors.set([c.r, c.g, c.b], i * 3)
+    }
     g.setAttribute('color', new BufferAttribute(colors, 3))
     g.deleteAttribute('uv')
-    return g
+    return g.toNonIndexed()
   }
-  const trunk = paint(new CylinderGeometry(0.022, 0.03, 0.14, 5).translate(0, 0.07, 0), 0.16, 0.1, 0.06)
-  const tiers = [
-    [0.17, 0.26, 0.2, 0.09, 0.2, 0.12],
-    [0.13, 0.22, 0.33, 0.1, 0.23, 0.13],
-    [0.08, 0.18, 0.46, 0.12, 0.27, 0.15],
-  ].map(([r, h, y, cr, cg, cb]) => paint(new ConeGeometry(r, h, 7).translate(0, y, 0), cr, cg, cb))
-  const merged = mergeGeometries([trunk, ...tiers])!
+  const parts: BufferGeometry[] = []
+  const bark = new Color('#3b2f25')
+  parts.push(paint(new CylinderGeometry(0.006, 0.014, 0.74, 4).translate(0, 0.37, 0), bark, bark))
+  const TIERS = 7
+  const low = new Color('#26341f')
+  const high = new Color('#435533')
+  const tip = new Color('#5d6c3f')
+  for (let k = 0; k < TIERS; k++) {
+    const f = k / (TIERS - 1)
+    const r = 0.012 + 0.085 * (1 - f) ** 0.85
+    const h = 0.17 - 0.05 * f
+    const y = 0.13 + f * 0.5
+    const segments = 9
+    const tier = new ConeGeometry(r, h, segments, 1, true)
+    // Jagged, drooping rim: alternate rim vertices reach out and sag, others tuck in.
+    const pos = tier.getAttribute('position')
+    for (let i = 0; i < pos.count; i++) {
+      if (pos.getY(i) > -h / 2 + 1e-4) continue
+      const ang = Math.atan2(pos.getZ(i), pos.getX(i)) + k * 0.7
+      const seg = Math.round((ang / (Math.PI * 2)) * segments)
+      const out = seg % 2 ? 1.12 : 0.72
+      pos.setXYZ(i, pos.getX(i) * out, pos.getY(i) - (out > 1 ? 0.025 : 0), pos.getZ(i) * out)
+    }
+    tier.rotateY(k * 0.9).translate(0, y + h / 2, 0)
+    parts.push(paint(tier, low.clone().lerp(high, f), high.clone().lerp(tip, f)))
+  }
+  const merged = mergeGeometries(parts)!
   merged.computeVertexNormals()
   return merged
 }
@@ -170,7 +199,8 @@ export async function loadKit(baseUrl: string) {
     kitSpots.set(id, scatterOnKit(meshes, groundMeshes, TILE_RADIUS, count, KIT.indexOf(id) + 1))
   }
 
-  function buildBoard(landscape: Landscape, field: Field): Board {
+  /** `cells` holds the prebuilt water and mountain cells (see terrain-pool.ts). */
+  function buildBoard(landscape: Landscape, cells: CustomCells): Board {
     const group = new Group()
     const owned: BufferGeometry[] = []
     type Entry = { tile: number; pre: Matrix4; prop: [number, number, number] | null }
@@ -214,7 +244,13 @@ export async function loadKit(baseUrl: string) {
         const isMountain = placement.tile === 'montana'
         const root = new Group()
         root.matrixAutoUpdate = false
-        const geo = buildCustomTile(field, x, z, TILE_RADIUS, isMountain ? 40 : 18)
+        const cell = cells.get(i)!
+        const geo = {
+          ground: unpack(cell.ground),
+          walls: unpack(cell.walls),
+          water: cell.water && unpack(cell.water),
+          waterWalls: cell.waterWalls && unpack(cell.waterWalls),
+        }
         const surface = new Mesh(geo.ground, ground)
         surface.receiveShadow = true
         surface.castShadow = isMountain
@@ -234,10 +270,10 @@ export async function loadKit(baseUrl: string) {
         }
         group.add(root)
         state.root = root
-        addProps(i, placement, scatterOnField(field, x, z, TILE_RADIUS, isMountain, landscape.spec.seed), 0)
+        addProps(i, placement, cell.spots, 0)
 
         if (isMountain) {
-          for (const t of field.mountainTrees(x, z)) {
+          for (const t of cell.trees) {
             const pre = new Matrix4().compose(
               new Vector3(t.x, t.y, t.z),
               new Quaternion().setFromAxisAngle(Y_AXIS, t.r),

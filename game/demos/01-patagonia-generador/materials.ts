@@ -322,7 +322,7 @@ export function createTreeMaterial() {
   const material = new MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0 })
   material.colorNode = Fn(() => {
     const drift = mx_noise_float(positionWorld.xz.mul(0.7)).mul(0.5).add(0.5)
-    const tint = mix(vec3(0.85, 1.0, 0.92), vec3(1.05, 1.0, 0.85), drift).mul(mood.needleTint)
+    const tint = mix(vec3(0.92, 0.97, 0.88), vec3(1.06, 1.0, 0.82), drift).mul(mood.needleTint)
     return mix(vertexColor(0).rgb.mul(tint), SNOW, snowMask().mul(smoothstep(0.2, 0.8, normalWorld.y)).mul(0.7))
   })()
   material.positionNode = Fn(() => {

@@ -161,7 +161,7 @@ export function createField(landscape: Landscape, R: number) {
       const gz = (mountainHeight(x, z + e) - mountainHeight(x, z - e)) / (2 * e)
       if (Math.hypot(gx, gz) > 1.25) continue
       if (fbm(x * 0.9, z * 0.9, seed + 40, 2) < 0.42) continue
-      out.push({ x: x - cx, z: z - cz, y: y - 0.02, s: 0.75 + hash(i * 3 + 2) * 0.6 * (1.2 - y / 1.25), r: hash(i + 99) * Math.PI * 2 })
+      out.push({ x: x - cx, z: z - cz, y: y - 0.02, s: 0.7 + hash(i * 3 + 2) * 0.45 * (1.2 - y / 1.25), r: hash(i + 99) * Math.PI * 2 })
     }
     return out
   }
@@ -170,12 +170,12 @@ export function createField(landscape: Landscape, R: number) {
    * Surface normal straight from the field. Neighbouring cells sample the same function, so
    * shading runs seamlessly across cell borders (per-mesh vertex normals would crease there).
    */
-  function normal(x: number, z: number, y = sample(x, z).y) {
+  function normal(x: number, z: number) {
     const e = 0.035
-    const nx = y - sample(x + e, z).y
-    const nz = y - sample(x, z + e).y
-    const l = Math.hypot(nx, e, nz)
-    return [nx / l, e / l, nz / l] as const
+    const nx = sample(x - e, z).y - sample(x + e, z).y
+    const nz = sample(x, z - e).y - sample(x, z + e).y
+    const l = Math.hypot(nx, 2 * e, nz)
+    return [nx / l, (2 * e) / l, nz / l] as const
   }
 
   return { sample, waterSdf, mountainHeight, mountainTrees, normal }
@@ -252,9 +252,14 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
   const ground = new BufferGeometry()
   ground.setAttribute('position', new BufferAttribute(pos, 3))
   ground.setIndex(tris)
-  const nrm = new Float32Array(count * 3)
-  pts.forEach(([x, z], i) => nrm.set(field.normal(cx + x, cz + z, heights[i]), i * 3))
-  ground.setAttribute('normal', new BufferAttribute(nrm, 3))
+  // Interior normals come from the mesh itself; only border vertices ask the field, so
+  // neighbouring cells agree exactly where they meet (no crease) at a fraction of the cost.
+  ground.computeVertexNormals()
+  const nrm = ground.getAttribute('normal') as BufferAttribute
+  let up = 0
+  for (let i = 0; i < count; i++) up += nrm.getY(i)
+  if (up < 0) for (let i = 0; i < count; i++) nrm.setXYZ(i, -nrm.getX(i), -nrm.getY(i), -nrm.getZ(i))
+  for (const edge of boundary) for (const i of edge) nrm.setXYZ(i, ...field.normal(cx + pts[i][0], cz + pts[i][1]))
 
   // Vertex colours: grass, sandy banks, wet mud below the waterline, rock on steep slopes.
   const normals = ground.getAttribute('normal')
