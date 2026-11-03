@@ -55,6 +55,8 @@ export type LandscapeSpec = {
   forestCopies: number
   /** Copies of the kit houses per village cell (1..2). */
   villageCopies: number
+  /** Camera distance multiplier: < 1 frames this landscape closer (default 1). */
+  zoom?: number
 }
 
 export type Landscape = { spec: LandscapeSpec; tiles: Placement[]; water: Water }
@@ -63,13 +65,13 @@ export type Landscape = { spec: LandscapeSpec; tiles: Placement[]; water: Water 
 export const CURATED: LandscapeSpec[] = [
   { seed: 11, radius: 3, ragged: 0.3, rivers: [{ from: 'lake', to: 'lake', minLen: 4 }], lakes: 0, lakeSize: [1, 3], village: 5, mountains: { ranges: 1, size: 5 }, forest: 0.45, reveal: 'center', mood: 'dia', forestCopies: 2, villageCopies: 2 },
   { seed: 101, radius: 4, ragged: 0.35, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }, { from: 'chain', to: 'edge', minLen: 4 }], lakes: 0, lakeSize: [2, 4], village: 7, mountains: { ranges: 2, size: 6 }, forest: 0.5, reveal: 'sweep', mood: 'invierno', forestCopies: 3, villageCopies: 2 },
-  { seed: 23, radius: 4, ragged: 0.4, rivers: [{ from: 'edge', to: 'lake', minLen: 4 }, { from: 'chain', to: 'lake', minLen: 3 }, { from: 'chain', to: 'edge', minLen: 3 }], lakes: 0, lakeSize: [2, 4], village: 10, mountains: { ranges: 1, size: 5 }, forest: 0.35, reveal: 'river', mood: 'atardecer', forestCopies: 2, villageCopies: 2 },
-  { seed: 41, radius: 4, ragged: 0.2, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }], lakes: 0, lakeSize: [3, 5], village: 12, mountains: { ranges: 2, size: 7 }, forest: 0.3, reveal: 'center', mood: 'noche', forestCopies: 2, villageCopies: 2 },
+  { seed: 23, radius: 4, ragged: 0.4, rivers: [{ from: 'edge', to: 'lake', minLen: 4 }, { from: 'chain', to: 'lake', minLen: 3 }, { from: 'chain', to: 'edge', minLen: 3 }], lakes: 0, lakeSize: [2, 4], village: 10, mountains: { ranges: 1, size: 5 }, forest: 0.35, reveal: 'river', mood: 'atardecer', forestCopies: 2, villageCopies: 2, zoom: 0.8 },
+  { seed: 41, radius: 4, ragged: 0.2, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }], lakes: 0, lakeSize: [3, 5], village: 12, mountains: { ranges: 2, size: 7 }, forest: 0.3, reveal: 'center', mood: 'noche', forestCopies: 2, villageCopies: 2, zoom: 0.78 },
   { seed: 37, radius: 3, ragged: 0.55, rivers: [{ from: 'edge', to: 'lake', minLen: 3 }], lakes: 2, lakeSize: [2, 5], village: 3, mountains: { ranges: 1, size: 4 }, forest: 0.65, reveal: 'spiral', mood: 'otono', forestCopies: 3, villageCopies: 1 },
   { seed: 53, radius: 5, ragged: 0.5, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }, { from: 'chain', to: 'lake', minLen: 4 }, { from: 'chain', to: 'edge', minLen: 4 }], lakes: 1, lakeSize: [2, 5], village: 9, mountains: { ranges: 2, size: 8 }, forest: 0.45, reveal: 'center', mood: 'dia', forestCopies: 2, villageCopies: 2 },
   { seed: 79, radius: 3, ragged: 0.45, rivers: [{ from: 'lake', to: 'lake', minLen: 3 }, { from: 'chain', to: 'lake', minLen: 3 }], lakes: 0, lakeSize: [2, 4], village: 5, mountains: { ranges: 1, size: 6 }, forest: 0.6, reveal: 'spiral', mood: 'invierno', forestCopies: 3, villageCopies: 2 },
-  { seed: 67, radius: 4, ragged: 0.3, rivers: [{ from: 'edge', to: 'edge', minLen: 7 }], lakes: 1, lakeSize: [3, 6], village: 11, mountains: { ranges: 1, size: 5 }, forest: 0.4, reveal: 'river', mood: 'atardecer', forestCopies: 2, villageCopies: 2 },
-  { seed: 97, radius: 5, ragged: 0.35, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }, { from: 'edge', to: 'lake', minLen: 4 }], lakes: 1, lakeSize: [2, 5], village: 10, mountains: { ranges: 2, size: 7 }, forest: 0.5, reveal: 'sweep', mood: 'noche', forestCopies: 3, villageCopies: 2 },
+  { seed: 67, radius: 4, ragged: 0.3, rivers: [{ from: 'edge', to: 'edge', minLen: 7 }], lakes: 1, lakeSize: [3, 6], village: 11, mountains: { ranges: 1, size: 5 }, forest: 0.4, reveal: 'river', mood: 'atardecer', forestCopies: 2, villageCopies: 2, zoom: 0.82 },
+  { seed: 97, radius: 5, ragged: 0.35, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }, { from: 'edge', to: 'lake', minLen: 4 }], lakes: 1, lakeSize: [2, 5], village: 10, mountains: { ranges: 2, size: 7 }, forest: 0.5, reveal: 'sweep', mood: 'noche', forestCopies: 3, villageCopies: 2, zoom: 0.8 },
   { seed: 131, radius: 4, ragged: 0.6, rivers: [{ from: 'edge', to: 'lake', minLen: 4 }], lakes: 2, lakeSize: [2, 4], village: 6, mountains: { ranges: 2, size: 5 }, forest: 0.7, reveal: 'center', mood: 'otono', forestCopies: 3, villageCopies: 1 },
 ]
 
@@ -99,6 +101,8 @@ export function specForIndex(index: number): LandscapeSpec {
     mood: MOODS[index % MOODS.length],
     forestCopies: rng.int(1, 3),
     villageCopies: rng.int(1, 2),
+    // Drawn last so the other properties keep their values.
+    zoom: rng.chance(0.35) ? 0.8 : 1,
   }
 }
 

@@ -179,11 +179,11 @@ let distanceGoal = 60
 const focus = new Vector3()
 const focusGoal = new Vector3()
 
-function distanceFor(boardRadius: number) {
+function distanceFor(boardRadius: number, zoom = 1) {
   const halfFov = (camera.fov * Math.PI) / 360
   const fitV = (boardRadius * 0.95) / Math.tan(halfFov)
   const fitH = (boardRadius * 1.0) / (Math.tan(halfFov) * camera.aspect)
-  return Math.max(fitV * 0.8, fitH) * ZOOM
+  return Math.max(fitV * 0.8, fitH) * ZOOM * zoom
 }
 
 /**
@@ -330,7 +330,9 @@ async function showLandscape(i: number) {
   targetGoal.copy(centroid).multiplyScalar(0.45).setY(0.3)
 
   const full = fullBleed
-  frame = () => (full ? distanceInside(composed.spec.radius + PAD + 0.3, 2) : distanceFor(radius + targetGoal.length() * 0.5))
+  // Some variants frame closer (spec.zoom); moving in never uncovers a full-bleed edge.
+  const zoom = composed.spec.zoom ?? 1
+  frame = () => (full ? distanceInside(composed.spec.radius + PAD + 0.3, 2) * zoom : distanceFor(radius + targetGoal.length() * 0.5, zoom))
   distanceGoal = frame()
   // Shadow frustum only ever grows mid-transition (the old board still casts); it is
   // tightened again once the old board is gone. Snapping it would pop every shadow.
