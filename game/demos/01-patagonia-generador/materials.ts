@@ -59,11 +59,12 @@ const SNOW = color('#eef1f4')
 
 /** Snow on upward-facing surfaces: above the snow line, or everywhere with `snowCover`. */
 const snowMask = Fn(() => {
+  // Crisp edges: snow that fades over a wide band reads as blur under the tilt-shift lens.
   const ragged = mx_noise_float(positionWorld.xz.mul(1.7)).mul(0.22)
-  const height = smoothstep(mood.snowLine.sub(0.12), mood.snowLine.add(0.12), positionWorld.y.add(ragged))
+  const height = smoothstep(mood.snowLine.sub(0.05), mood.snowLine.add(0.05), positionWorld.y.add(ragged))
   const drift = smoothstep(0.25, 0.6, mx_noise_float(positionWorld.xz.mul(0.9)).mul(0.5).add(0.5).add(mood.snowCover.mul(0.9)))
   const blanket = mood.snowCover.mul(drift)
-  return max(height, blanket).mul(smoothstep(0.35, 0.7, normalWorld.y))
+  return max(height, blanket).mul(smoothstep(0.42, 0.55, normalWorld.y))
 })
 
 /**

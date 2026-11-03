@@ -103,10 +103,32 @@ export function createField(landscape: Landscape, R: number) {
       sum += Math.exp(((p.h * Math.exp(-dd / (2 * p.s * p.s))) - 3) * 2.2)
     }
     const peak = sum > 0 ? Math.log(sum) / 2.2 + 3 : 0
-    const n = fbm(x * 0.35 + 11, z * 0.35 - 5, seed + 21, 4)
-    const ridged = 1 - Math.abs(2 * fbm(x * 0.55, z * 0.55, seed + 22, 3) - 1)
-    const body = Math.max(0, peak) * (0.72 + 0.45 * ridged * ridged) + 0.18 + 0.35 * n
-    return Math.pow(m, 1.4) * body
+    // Domain warp bends the ridges so they don't follow the noise lattice.
+    const wx = x + (fbm(x * 0.4, z * 0.4, seed + 31, 2) - 0.5) * 1.6
+    const wz = z + (fbm(x * 0.4 + 7, z * 0.4 - 3, seed + 32, 2) - 0.5) * 1.6
+    const n = fbm(wx * 0.35 + 11, wz * 0.35 - 5, seed + 21, 4)
+    const ridged = 1 - Math.abs(2 * fbm(wx * 0.55, wz * 0.55, seed + 22, 3) - 1)
+    let body = Math.max(0, peak) * (0.72 + 0.45 * ridged * ridged) + 0.18 + 0.35 * n
+    // Sharp crests and gullies: ridged octaves whose strength grows with altitude,
+    // so foothills stay soft and the summits get craggy.
+    const alt = smoothstep(0.3, 2.2, body)
+    let crag = 0
+    let amp = 0.4
+    let f = 1.15
+    for (let o = 0; o < 2; o++) {
+      const r = 1 - Math.abs(2 * fbm(wx * f, wz * f, seed + 50 + o, 2) - 1)
+      crag += (r * r * r - 0.3) * amp
+      amp *= 0.5
+      f *= 2.1
+    }
+    body += crag * (0.25 + alt)
+    // Rock strata: soft terraces on the flanks read as layered cliffs.
+    const step = 0.22
+    const t = body / step
+    const fl = Math.floor(t)
+    const terr = (fl + smoothstep(0.15, 0.85, t - fl)) * step
+    body = body + (terr - body) * 0.55 * smoothstep(0.35, 1.0, body)
+    return Math.pow(m, 1.4) * Math.max(0, body)
   }
 
   function sample(x: number, z: number) {
@@ -195,7 +217,7 @@ export type CustomTileGeometry = {
 }
 
 /** Geometry for one custom cell centred at world (cx, cz), in tile-local coordinates. */
-export function buildCustomTile(field: Field, cx: number, cz: number, R: number, detail: number): CustomTileGeometry {
+export function buildCustomTile(field: Field, cx: number, cz: number, R: number, detail: number, faceted = false): CustomTileGeometry {
   const { pts, tris, boundary } = grid(R, detail)
   const count = pts.length
   const pos = new Float32Array(count * 3)
@@ -239,6 +261,13 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
     colors.set([c.r, c.g, c.b], i * 3)
   }
   ground.setAttribute('color', new BufferAttribute(colors, 3))
+  // Rock reads crisper faceted: flat per-triangle normals keep the low-poly kit language
+  // and give the lens real edges to resolve inside the focus band.
+  const surface = faceted ? ground.toNonIndexed() : ground
+  if (faceted) {
+    surface.computeVertexNormals()
+    ground.dispose()
+  }
 
   // Soil walls around the cell, from the surface down to the soil block.
   const wallPos: number[] = []
@@ -289,7 +318,7 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
       waterWalls.computeVertexNormals()
     }
   }
-  return { ground, walls, water, waterWalls }
+  return { ground: surface, walls, water, waterWalls }
 }
 
 export { key }

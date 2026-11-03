@@ -184,7 +184,7 @@ export async function loadKit(baseUrl: string) {
         const isMountain = placement.tile === 'montana'
         const root = new Group()
         root.matrixAutoUpdate = false
-        const geo = buildCustomTile(field, x, z, TILE_RADIUS, isMountain ? 30 : 18)
+        const geo = buildCustomTile(field, x, z, TILE_RADIUS, isMountain ? 34 : 18, isMountain)
         const surface = new Mesh(geo.ground, ground)
         surface.receiveShadow = true
         surface.castShadow = isMountain

@@ -49,6 +49,8 @@ const canvas = document.querySelector<HTMLCanvasElement>('#game')!
 const renderer = new WebGPURenderer({ canvas, antialias: true })
 // The post stack (AO + DoF + bloom) is fill-bound: 1.5× by default, full 2× with ?hq for recordings.
 const HQ = new URLSearchParams(window.location.search).has('hq')
+/** Camera framing: < 1 is closer (crops the board edges), 1 fits the whole board. `?zoom=0.9` overrides. */
+const ZOOM = Number(new URLSearchParams(window.location.search).get('zoom')) || 0.74
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, HQ ? 2 : 1.5))
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.toneMapping = AgXToneMapping
@@ -163,14 +165,14 @@ function distanceFor(boardRadius: number) {
   const halfFov = (camera.fov * Math.PI) / 360
   const fitV = (boardRadius * 0.95) / Math.tan(halfFov)
   const fitH = (boardRadius * 1.0) / (Math.tan(halfFov) * camera.aspect)
-  return Math.max(fitV * 0.8, fitH)
+  return Math.max(fitV * 0.8, fitH) * ZOOM
 }
 
 // --- Post: contact AO → depth-of-field tilt-shift → bloom → display-space grade ----------
 
 const focusDistance = uniform(60)
 const focalLength = uniform(6)
-const bokehScale = uniform(6.5)
+const bokehScale = uniform(3.6)
 
 const pipeline = new RenderPipeline(renderer)
 pipeline.outputColorTransform = false
@@ -235,7 +237,7 @@ function showLandscape(i: number) {
   const radius = boardRadiusOf(board)
   distanceGoal = distanceFor(radius)
   fitShadow(radius)
-  focalLength.value = radius * 0.32
+  focalLength.value = radius * 0.55
   targetMood = MOODS[landscape.spec.mood]
 
   // Focus on the village (the story of the shot); fall back to the board centre.
