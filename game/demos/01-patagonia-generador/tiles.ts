@@ -69,6 +69,7 @@ export type Board = {
   group: Group
   tiles: TileState[]
   sync: () => void
+  warmup: () => () => void
   lightPosition: (index: number, out: Vector3) => Vector3
   dispose: () => void
 }
@@ -330,7 +331,18 @@ export async function loadKit(baseUrl: string) {
     const pos = new Vector3()
     const scl = new Vector3()
 
+    // Last synced animation state per tile: a frame where nothing moved skips all the work.
+    const lastState = new Float32Array(tiles.length * 6).fill(NaN)
+
     function sync() {
+      let moved = false
+      tiles.forEach((t, i) => {
+        const k = i * 6
+        if (lastState[k] === t.scale && lastState[k + 1] === t.y && lastState[k + 2] === t.tiltX && lastState[k + 3] === t.tiltZ && lastState[k + 4] === t.grow) return
+        lastState.set([t.scale, t.y, t.tiltX, t.tiltZ, t.grow], k)
+        moved = true
+      })
+      if (!moved) return
       tiles.forEach((t, i) => {
         if (t.scale <= 0.002) {
           tileMatrices[i].copy(zero)
@@ -344,22 +356,44 @@ export async function loadKit(baseUrl: string) {
           t.root.matrixWorldNeedsUpdate = true
         }
       })
+      // Only visible instances are packed and drawn: while boards swap, hidden cells (not yet
+      // risen, or already sunk) cost no vertex work in the colour, normal and shadow passes.
       for (const b of buckets.values()) {
-        b.entries.forEach((e, j) => {
+        const mesh = b.mesh!
+        let n = 0
+        for (const e of b.entries) {
+          const tile = tiles[e.tile]
+          if (tile.scale <= 0.002 || (e.prop && tile.grow <= 0.001)) continue
           m.multiplyMatrices(tileMatrices[e.tile], e.pre)
           if (e.prop) {
             // Grow by rising out of the ground with a gentle stretch, never by flattening: a
             // squashed house lies coplanar with the grass and z-fights (flicker) as it emerges.
-            const g = tiles[e.tile].grow
-            if (g <= 0.001) m.copy(zero)
-            else {
-              const sink = (1 - Math.min(g, 1)) * (b.top * e.prop[1] + 0.01)
-              m.multiply(s.makeTranslation(0, -sink, 0)).multiply(s2.makeScale(e.prop[0], e.prop[1] * (0.5 + 0.5 * g), e.prop[2]))
-            }
+            const g = tile.grow
+            const sink = (1 - Math.min(g, 1)) * (b.top * e.prop[1] + 0.01)
+            m.multiply(s.makeTranslation(0, -sink, 0)).multiply(s2.makeScale(e.prop[0], e.prop[1] * (0.5 + 0.5 * g), e.prop[2]))
           }
-          b.mesh!.setMatrixAt(j, m)
-        })
-        b.mesh!.instanceMatrix.needsUpdate = true
+          mesh.setMatrixAt(n++, m)
+        }
+        mesh.count = n
+        mesh.visible = n > 0
+        if (n > 0) {
+          mesh.instanceMatrix.clearUpdateRanges()
+          mesh.instanceMatrix.addUpdateRange(0, n * 16)
+          mesh.instanceMatrix.needsUpdate = true
+        }
+      }
+    }
+
+    /** Makes every part drawable so its pipelines can be compiled ahead; call the result to re-hide. */
+    function warmup() {
+      for (const b of buckets.values()) {
+        b.mesh!.count = Math.min(1, b.entries.length)
+        b.mesh!.visible = true
+      }
+      for (const t of tiles) if (t.root) t.root.visible = true
+      return () => {
+        lastState.fill(NaN)
+        sync()
       }
     }
 
@@ -372,7 +406,7 @@ export async function loadKit(baseUrl: string) {
     }
 
     sync()
-    return { group, tiles, sync, lightPosition, dispose }
+    return { group, tiles, sync, warmup, lightPosition, dispose }
   }
 
   return { buildBoard }

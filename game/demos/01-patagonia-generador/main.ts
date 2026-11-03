@@ -314,6 +314,19 @@ async function showLandscape(i: number) {
   const cells = await buildCustomCells(landscape, TILE_RADIUS)
   if (token !== buildToken) return
   const board = kit.buildBoard(landscape, cells)
+  // Compile pipelines and set up GPU state off the critical frame, instead of on the first
+  // frame the board is drawn (a visible hitch whenever a material combination is new).
+  const hide = board.warmup()
+  try {
+    await renderer.compileAsync(board.group, camera, scene)
+  } catch {
+    // Older backends: compile lazily on first draw instead.
+  }
+  hide()
+  if (token !== buildToken) {
+    board.dispose()
+    return
+  }
   scene.add(board.group)
 
   const radius = boardRadiusOf(board)
