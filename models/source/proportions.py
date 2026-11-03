@@ -144,7 +144,7 @@ def mountain(m,x,y,r,h):
         foot=.36*math.exp(-(xx/.89)**2-(yy/.92)**2)
         crest=.91+.09*math.cos(9*yy+.4)
         flutes=.95+.035*math.cos(17*xx+4*yy)+.025*math.sin(23*xx-6*yy)
-        return max(.001,(main*crest+shoulder+foot)*flutes*fade)*h/2.55
+        return max(0,(main*crest+shoulder+foot)*flutes*fade)*h/2.55
     m.elevation=elevation
     old=m.smooth;m.smooth=True
     corners=[Vector((R*math.cos(math.pi/6+i*TAU/6),R*math.sin(math.pi/6+i*TAU/6))) for i in range(6)]
@@ -153,7 +153,7 @@ def mountain(m,x,y,r,h):
         p,q=corners[sector],corners[(sector+1)%6]
         def point(a,b):
             co=(p*a+q*b)/n
-            return (co.x,co.y,elevation(co.x,co.y)+.003)
+            return (co.x,co.y,elevation(co.x,co.y))
         for a in range(n):
             for b in range(n-a):
                 triangles=[[point(a,b),point(a+1,b),point(a,b+1)]]

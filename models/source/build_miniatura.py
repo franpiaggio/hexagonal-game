@@ -98,16 +98,17 @@ def foliage(m,start,end,width,kind=PINE,roll=0):
     for i in range(2):
         t=i/2;t2=(i+1)/2
         p=start.lerp(end,t);q=start.lerp(end,t2)
-        p.z-=math.sin(t*math.pi)*.025;q.z-=math.sin(t2*math.pi)*.025
+        sag=(end-start).length*.09
+        p.z-=math.sin(t*math.pi)*sag;q.z-=math.sin(t2*math.pi)*sag
         m.face([tuple(p-across),tuple(q-across),tuple(q+across),tuple(p+across)],(tint_value,)*3)
         m.uv[-1]=[(0,t),(0,t2),(1,t2),(1,t)]
     m.forced_material=old
 
 def pine(m,x,y,h=1):
     tilt=Vector((m.rng.uniform(-.04,.04)*h,m.rng.uniform(-.04,.04)*h,0))
-    m.tube((x,y,0),(x+tilt.x,y+tilt.y,h),.023*h,'trunk',8,.003*h)
+    m.tube((x,y,0),(x+tilt.x,y+tilt.y,h),.0105*h,'trunk',8,.002*h)
     for level in range(8):
-        t=level/8;z=(.19+.76*t)*h;radius=.34*h*(1-t)**.78
+        t=level/8;z=(.19+.76*t)*h;radius=.18*h*(1-t)**.78
         count=7 if level<5 else 5
         phase=m.rng.uniform(0,TAU)
         for i in range(count):
@@ -116,7 +117,7 @@ def pine(m,x,y,h=1):
             origin=Vector((x+tilt.x*t,y+tilt.y*t,z+m.rng.uniform(-.024,.024)*h))
             length=radius*m.rng.uniform(.81,1.18)
             tip=origin+direction*length;tip.z+=(-.018+.045*t)*h
-            m.tube(tuple(origin),tuple(tip),.007*h*(1-t)+.001,'trunk',5,.001)
+            m.tube(tuple(origin),tuple(tip),.0038*h*(1-t)+.0006,'trunk',5,.001)
             foliage(m,origin-direction*.015*h,tip+direction*.04*h,length*.95,PINE,m.rng.uniform(-.3,.3))
             foliage(m,origin,tip+direction*.035*h,length*.7,PINE,.95)
             if level<6:
@@ -186,23 +187,25 @@ def rock(m,x,y,s=.13):
             k=(i+1)%n;m.face([rings[j][i],rings[j][k],rings[j+1][k],rings[j+1][i]],'stone')
     m.face(rings[-1],'stone');m.smooth=old
 
-# Build the same topology and layout, into a separate version.
-assembly=assembly.replace('PATAGONIA · verano / set base','PATAGONIA · miniatura realista')
-assembly=assembly.replace('PATAGONIA · catálogo de piezas','PATAGONIA · catálogo realista')
+exec(compile((SCRIPT.with_name('proportions.py')).read_text(),'proportions.py','exec'))
+
+# Build the same topology and layout with corrected proportions.
+assembly=assembly.replace('PATAGONIA · verano / set base','PATAGONIA · proporciones realistas')
+assembly=assembly.replace('PATAGONIA · catálogo de piezas','PATAGONIA · catálogo proporcionado')
 assembly=assembly.replace('patagonia_base.blend','patagonia_miniatura.blend')
-assembly=assembly.replace("'Patagonia · verano / base 01'","'Patagonia · miniatura / base 02'")
-assembly=assembly.replace("scene.cycles.samples=40","scene.cycles.samples=64")
+assembly=assembly.replace("'Patagonia · verano / base 01'","'Patagonia · miniatura / proporciones 03'")
+assembly=assembly.replace("scene.cycles.samples=40","scene.cycles.samples=40")
 assembly=assembly.replace("area.spaces.active.shading.type='MATERIAL'","area.spaces.active.shading.type='MATERIAL'")
 exec(compile(assembly,'assemble_miniatura.py','exec'))
 
-# A physical 1:25 display scale makes camera DOF behave like a tabletop photograph.
+# Display shrink factor .04 represents a physical landscape miniature at 1:500.
 # Individual GLBs remain in the original grid units and are not rescaled.
 scale=.04
-root=bpy.data.objects.new('Maqueta · escala de presentación 1:25',None);demo.objects.link(root)
+root=bpy.data.objects.new('Maqueta · escala de paisaje 1:500',None);demo.objects.link(root)
 for obj in list(demo.objects):
     if obj!=root:obj.parent=root
 root.scale=(scale,)*3
-catroot=bpy.data.objects.new('Maqueta catálogo · 1:25',None);catalog.collection.objects.link(catroot)
+catroot=bpy.data.objects.new('Maqueta catálogo · 1:500',None);catalog.collection.objects.link(catroot)
 for obj in list(catalog.objects):
     if obj.type=='MESH' and obj!=floor:obj.parent=catroot
 catroot.scale=(scale,)*3
@@ -219,13 +222,15 @@ for sc,cam in [(scene,camera),(catalog,catcam)]:
 focus=bpy.data.objects.new('Plano de foco · caserío y río',None);presentation.objects.link(focus)
 focus.location=(0,-.8*scale,.35*scale)
 camera.data.dof.use_dof=True;camera.data.dof.focus_object=focus
-camera.data.dof.aperture_fstop=16;camera.data.dof.aperture_blades=7
+camera.data.dof.aperture_fstop=22;camera.data.dof.aperture_blades=7
 camera.data.lens=50
 scene.render.filepath=str(OUT/'previews'/'miniatura_tiltshift.png')
 catalog.render.filepath=str(OUT/'previews'/'catalogo_realista.png')
-manifest_data['presentation']={'physicalScale':scale,'camera':'orthographic','lensMillimeters':50,'fStop':16,'focusBlender':[0,-.8,.35],
+manifest_data['presentation']={'physicalScale':scale,'camera':'orthographic','lensMillimeters':50,'fStop':22,'focusBlender':[0,-.8,.35],
  'note':'Depth of field belongs to the camera/postprocessing; individual GLBs contain no blur.'}
-manifest_data['version']=2
+manifest_data['version']=3
+manifest_data['units']='grid units'
+manifest_data['proportions']={'representedMetersPerGridUnit':20,'mainHouseMeters':{'width':10,'depth':11.8,'ridgeHeight':8.82},'smallHouseMeters':{'width':7.6,'depth':9.4,'ridgeHeight':5.38},'doorMeters':[.9,2.1],'forestHeightMeters':[13.8,25.4],'mountainRelief':'compressed cartographic ridge; not a full mountain at literal architectural scale'}
 manifest_data['materials']='PBR with embedded textures, vertex colors, tangent normal maps and MASK foliage'
 (OUT/'manifest.json').write_text(json.dumps(manifest_data,indent=2,ensure_ascii=False)+'\n')
 bpy.context.window.scene=scene

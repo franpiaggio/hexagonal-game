@@ -99,7 +99,7 @@ def ground(m):
     # A common border palette and exact edge positions prevent discontinuities.
     for i in range(6):
         p=verts[i]; q=verts[(i+1)%6]
-        for za,zb,col in [(-.26,-.21,'earth_dark'),(-.21,-.045,'earth'),(-.045,0,'grass_dark')]:
+        for za,zb,col in [(-.12,-.095,'earth_dark'),(-.095,-.022,'earth'),(-.022,0,'grass_dark')]:
             m.face([(p[0],p[1],za),(q[0],q[1],za),(q[0],q[1],zb),(p[0],p[1],zb)],col)
         n=8
         def point(a,b): return ((a*p[0]+b*q[0])/n,(a*p[1]+b*q[1])/n,0)
@@ -112,7 +112,7 @@ def ground(m):
                     edge=min(A-x*math.cos(j*TAU/6)-y*math.sin(j*TAU/6) for j in range(6))
                     f=1+min(1,edge/.35)*(.018*math.sin(5*x+2*y)+.016*math.sin(2*x-4*y))
                     m.face(tri,tint('grass',f))
-    m.face([(x,y,-.26) for x,y in reversed(verts)],'earth_dark')
+    m.face([(x,y,-.12) for x,y in reversed(verts)],'earth_dark')
 
 def patch(m,x,y,rx,ry,color,z=.006,n=11):
     layer=m.patch_layers.get(z,0)+1
@@ -290,8 +290,9 @@ def make_tile(kind,seed,collection):
         lenga(m,-1,-.76,.67); lenga(m,.68,-.94,.65)
         rock(m,1.28,.03,.13); scatter(m)
     elif kind=='caserio':
-        patch(m,0,-.2,1.25,.92,'sand')
-        path(m,[(-.9,-.9),(-.25,-.6),(.36,-.64),(.9,-.26)],.17)
+        patch(m,-.38,.22,.38,.48,'sand')
+        patch(m,.72,-.49,.31,.36,'sand')
+        path(m,[(-.27,-.11),(-.24,-.45),(.16,-.65),(.72,-.84)],.06)
         cabin(m,-.38,.28,1.04,-.12,'roof')
         cabin(m,.72,-.45,.67,.28,'slate')
         pine(m,-1.05,.9,.9); pine(m,.75,.8,.79)
@@ -301,9 +302,7 @@ def make_tile(kind,seed,collection):
         scatter(m,20,lambda x,y: abs(x)<.9 and abs(y)<.7)
     elif kind=='montana':
         patch(m,0,.1,1.33,1.29,'grass_dark')
-        mountain(m,.1,.45,.94,2.0)
-        mountain(m,-.66,-.13,.69,1.2)
-        mountain(m,.73,-.4,.61,1.05)
+        mountain(m,.0,.15,1.5,2.55)
         for x,y,h in [(-1.12,.54,.53),(1.18,.49,.48),(-.72,-.9,.55),(-.21,-1.07,.45),(.88,-.93,.41)]: pine(m,x,y,h)
         for x,y,s in [(.05,-.64,.19),(-.48,-.68,.15),(1.12,-.23,.12),(-1.23,.02,.16)]: rock(m,x,y,s)
         scatter(m,20)
@@ -341,9 +340,9 @@ def make_tile(kind,seed,collection):
         for x,y,h in [(-.8,.98,.7),(-.14,1.1,.85),(.51,.96,.65),(-1.14,-.76,.65)]: pine(m,x,y,h)
         for x,y,s in [(-1.14,.36,.18),(-1.18,.04,.12),(.36,-.8,.17),(.57,-.77,.11)]: rock(m,x,y,s)
         # A tiny wooden jetty gives a scale cue from above.
-        m.box((-.22,-.67,.065),(.25,.48,.045),'wood')
-        for yy in [-.86,-.78,-.7,-.62,-.54]: m.box((-.22,yy,.091),(.26,.015,.009),'wood_dark')
-        for xx in [-.36,-.08]: m.box((xx,-.56,.09),(.025,.025,.18),'wood_dark')
+        m.box((-.22,-.67,.044),(.12,.38,.012),'wood')
+        for j in range(27): m.box((-.22,-.855+j*.014,.0505),(.122,.001,.001),'wood_dark')
+        for xx in [-.281,-.159]: m.box((xx,-.53,.04),(.007,.007,.085),'wood_dark')
         scatter(m,18,lambda x,y: abs(y)<.85)
     obj=m.finish(kind,collection)
     obj['tile_id']=kind; obj['radius']=R; obj['water_edges']=json.dumps(sorted(ports))
@@ -413,7 +412,7 @@ world=bpy.data.worlds.new('Fondo · papel cálido'); world.use_nodes=True; world
 backmat=bpy.data.materials.new('Papel marfil'); backmat.diffuse_color=(*[linear(v) for v in rgb('#e6e4d9')],1); backmat.use_nodes=True
 backmat.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value=backmat.diffuse_color
 backmat.node_tree.nodes['Principled BSDF'].inputs['Roughness'].default_value=1
-floor_data=bpy.data.meshes.new('Fondo'); floor_data.from_pydata([(-200,-200,-.30),(200,-200,-.30),(200,200,-.30),(-200,200,-.30)],[],[(0,1,2,3)])
+floor_data=bpy.data.meshes.new('Fondo'); floor_data.from_pydata([(-200,-200,-.15),(200,-200,-.15),(200,200,-.15),(-200,200,-.15)],[],[(0,1,2,3)])
 floor=bpy.data.objects.new('Fondo de presentación',floor_data); presentation.objects.link(floor); floor.data.materials.append(backmat)
 scene.render.engine='CYCLES'; scene.cycles.samples=40; scene.cycles.use_denoising=True
 scene.render.resolution_x=1800; scene.render.resolution_y=1500; scene.render.resolution_percentage=100
@@ -437,7 +436,7 @@ for kind,(x,y) in zip(kinds,catalog_positions):
     ob=bpy.data.objects.new(kind,assets[kind].data); ob.location=(x,y,0); catalog.collection.objects.link(ob)
 
 manifest_data={'name':'Patagonia · verano / base 01','version':1,'radius':R,'apothem':A,
- 'thickness':.26,'units':'meters','orientation':'pointy-top','upAxis':'Y',
+ 'thickness':.12,'units':'meters','orientation':'pointy-top','upAxis':'Y',
  'origin':'center of tile at ground surface','waterWidth':.70,'bankWidth':.84,'waterHeight':.027,
  'edgeOrder':'0 east, then +60 degrees in Blender XY; in Three.js direction = [cos(a),0,-sin(a)]',
  'axialToThree':'[sqrt(3)*R*(q+r/2), 0, -1.5*R*r]',

@@ -1,10 +1,10 @@
 {
-  "name": "Patagonia · miniatura / base 02",
-  "version": 2,
+  "name": "Patagonia · miniatura / proporciones 03",
+  "version": 3,
   "radius": 2.0,
   "apothem": 1.7320508075688772,
-  "thickness": 0.26,
-  "units": "meters",
+  "thickness": 0.12,
+  "units": "grid units",
   "orientation": "pointy-top",
   "upAxis": "Y",
   "origin": "center of tile at ground surface",
@@ -19,29 +19,29 @@
       "id": "pradera",
       "file": "glb/pradera.glb",
       "waterEdges": [],
-      "triangles": 2139,
-      "vertices": 1818
+      "triangles": 3222,
+      "vertices": 3251
     },
     {
       "id": "bosque",
       "file": "glb/bosque.glb",
       "waterEdges": [],
-      "triangles": 23760,
-      "vertices": 24219
+      "triangles": 24567,
+      "vertices": 25348
     },
     {
       "id": "caserio",
       "file": "glb/caserio.glb",
       "waterEdges": [],
-      "triangles": 6044,
-      "vertices": 5288
+      "triangles": 8494,
+      "vertices": 7130
     },
     {
       "id": "montana",
       "file": "glb/montana.glb",
       "waterEdges": [],
-      "triangles": 12037,
-      "vertices": 10424
+      "triangles": 14875,
+      "vertices": 11758
     },
     {
       "id": "rio_recto",
@@ -50,8 +50,8 @@
         0,
         3
       ],
-      "triangles": 5991,
-      "vertices": 5846
+      "triangles": 6450,
+      "vertices": 6464
     },
     {
       "id": "rio_curvo",
@@ -60,8 +60,8 @@
         1,
         3
       ],
-      "triangles": 6048,
-      "vertices": 5902
+      "triangles": 6519,
+      "vertices": 6540
     },
     {
       "id": "laguna",
@@ -69,8 +69,8 @@
       "waterEdges": [
         0
       ],
-      "triangles": 7580,
-      "vertices": 7399
+      "triangles": 7850,
+      "vertices": 7585
     }
   ],
   "demoLayout": [
@@ -226,13 +226,35 @@
     "physicalScale": 0.04,
     "camera": "orthographic",
     "lensMillimeters": 50,
-    "fStop": 16,
+    "fStop": 22,
     "focusBlender": [
       0,
       -0.8,
       0.35
     ],
     "note": "Depth of field belongs to the camera/postprocessing; individual GLBs contain no blur."
+  },
+  "proportions": {
+    "representedMetersPerGridUnit": 20,
+    "mainHouseMeters": {
+      "width": 10,
+      "depth": 11.8,
+      "ridgeHeight": 8.82
+    },
+    "smallHouseMeters": {
+      "width": 7.6,
+      "depth": 9.4,
+      "ridgeHeight": 5.38
+    },
+    "doorMeters": [
+      0.9,
+      2.1
+    ],
+    "forestHeightMeters": [
+      13.8,
+      25.4
+    ],
+    "mountainRelief": "compressed cartographic ridge; not a full mountain at literal architectural scale"
   },
   "materials": "PBR with embedded textures, vertex colors, tangent normal maps and MASK foliage"
 }
