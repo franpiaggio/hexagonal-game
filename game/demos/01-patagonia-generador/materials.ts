@@ -61,7 +61,7 @@ const SNOW = color('#eef1f4')
 /** Snow on upward-facing surfaces: above the snow line, or everywhere with `snowCover`. */
 const snowMask = Fn(() => {
   // Crisp edges: snow that fades over a wide band reads as blur under the tilt-shift lens.
-  const ragged = mx_noise_float(positionWorld.xz.mul(1.7)).mul(0.22)
+  const ragged = mx_noise_float(positionWorld.mul(1.7)).mul(0.22)
   const height = smoothstep(mood.snowLine.sub(0.05), mood.snowLine.add(0.05), positionWorld.y.add(ragged))
   const drift = smoothstep(0.25, 0.6, mx_noise_float(positionWorld.xz.mul(0.9)).mul(0.5).add(0.5).add(mood.snowCover.mul(0.9)))
   const blanket = mood.snowCover.mul(drift)
@@ -82,9 +82,11 @@ export function createGroundMaterial(waterLevel: number) {
     const base = vertexColor(0).rgb
 
     const patches = mx_fractal_noise_float(p.mul(0.11), 3, 2.0, 0.5).mul(0.5).add(0.5)
-    const mottling = mx_noise_float(p.mul(0.9)).mul(0.5).add(0.5)
-    const grain = mx_noise_float(p.mul(7.0)).mul(0.5).add(0.5)
-    const speckle = mx_noise_float(p.mul(23.0)).mul(0.5).add(0.5)
+    // 3D noise: on steep rock a top-down (xz) pattern would smear into vertical streaks.
+    const q = positionWorld
+    const mottling = mx_noise_float(q.mul(0.9)).mul(0.5).add(0.5)
+    const grain = mx_noise_float(q.mul(7.0)).mul(0.5).add(0.5)
+    const speckle = mx_noise_float(q.mul(23.0)).mul(0.5).add(0.5)
 
     // Grassiness: vertex colours that are clearly greener than they are red.
     const grassy = smoothstep(0.0, 0.06, base.g.sub(base.r))

@@ -90,7 +90,10 @@ sun.shadow.normalBias = 0.03
 sun.shadow.radius = 2
 scene.add(sun, sun.target)
 
+let shadowRadius = 0
+let liveShadowRadius = 0
 function fitShadow(boardRadius: number) {
+  shadowRadius = boardRadius
   const s = boardRadius + 4
   const cam = sun.shadow.camera
   cam.left = -s
@@ -223,6 +226,8 @@ function distanceInside(cells: number, R: number) {
 
 const focusDistance = uniform(60)
 const focalLength = uniform(6)
+/** The focus band eases between landscapes instead of snapping. */
+let focalGoal = 6
 const bokehScale = uniform(3.6)
 
 const pipeline = new RenderPipeline(renderer)
@@ -250,13 +255,23 @@ const vignette = smoothstep(0.38, 1.0, length(screenUV.sub(0.5).mul(vec2(1.2, 1.
 // hash() takes a scalar: fold both screen axes and time into one seed (a vec2 would only use x → stripes).
 const grain = hash(screenUV.x.mul(1913.7).add(screenUV.y.mul(7919.3)).add(time.mul(13.17))).sub(0.5).mul(0.016)
 pipeline.outputNode = vec4(graded.mul(mix(float(1), float(0.82), vignette)).add(vec3(grain)), 1)
-if (import.meta.env.DEV) Object.assign(window, { __post: { pipeline, sceneColor, occluded, blurred, hdr, aoPass, renderOutput } })
+if (import.meta.env.DEV) Object.assign(window, { __post: { pipeline, sceneColor, occluded, blurred, hdr, aoPass, renderOutput, focusDistance, focalLength, camera } })
 
 // --- Landscapes --------------------------------------------------------------------------
 
 const kit = await loadKit(new URL('../../assets/patagonia/', window.location.href).href)
 
-type Show = { board: Board; start: number; exitStart: number | null; window: number; tilts: [number, number][] }
+type Show = {
+  board: Board
+  start: number
+  exitStart: number | null
+  window: number
+  tilts: [number, number][]
+  /** 0 at the centre … 1 at the rim: exits always sink centre-out, whatever the reveal pattern. */
+  ring: number[]
+  /** Per tile: earliest rise time, once the leaving board has cleared that spot. */
+  notBefore: number[]
+}
 const shows: Show[] = []
 const params = new URLSearchParams(window.location.search)
 let index = Number(params.get('v') ?? 0) || 0
@@ -265,8 +280,8 @@ const RISE_DEPTH = 3.2
 const RISE_TIME = 1.35
 const GROW_DELAY = 0.45
 const GROW_TIME = 1.0
-const EXIT_TIME = 0.65
-const EXIT_WINDOW = 0.8
+const EXIT_TIME = 0.55
+const EXIT_WINDOW = 0.5
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 const easeInOutSine = (x: number) => -(Math.cos(Math.PI * x) - 1) / 2
@@ -307,17 +322,33 @@ function showLandscape(i: number) {
   const full = fullBleed
   frame = () => (full ? distanceInside(composed.spec.radius + PAD + 0.3, 2) : distanceFor(radius + targetGoal.length() * 0.5))
   distanceGoal = frame()
-  fitShadow(radius + targetGoal.length())
-  focalLength.value = storyRadius * 0.48
+  // Shadow frustum only ever grows mid-transition (the old board still casts); it is
+  // tightened again once the old board is gone. Snapping it would pop every shadow.
+  liveShadowRadius = radius + targetGoal.length()
+  fitShadow(Math.max(shadowRadius, liveShadowRadius))
+  focalGoal = storyRadius * 0.48
 
   lastChange = now()
-  const busy = shows.some((s) => s.exitStart !== null)
+  const leaving = shows.filter((s) => s.exitStart !== null)
+  const busy = leaving.length > 0
   shows.push({
     board,
-    start: now() + (busy ? EXIT_WINDOW * 0.9 : 0.2),
+    start: now() + (busy ? EXIT_TIME * 0.85 : 0.2),
     exitStart: null,
     window: 1.6 + board.tiles.length * 0.022,
     tilts: board.tiles.map(() => [(Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3]),
+    ring: board.tiles.map((t) => Math.hypot(t.x, t.z) / Math.max(1e-3, radius - 2)),
+    // A tile rises only after every leaving board has sunk the ring it sits on, so the
+    // new wave chases the old one outwards and the two never share a cell on screen.
+    notBefore: board.tiles.map((t) => {
+      const d = Math.hypot(t.x, t.z) + 2.5
+      let at = 0
+      for (const o of leaving) {
+        const r = boardRadiusOf(o.board) - 2
+        at = Math.max(at, o.exitStart! + EXIT_WINDOW * Math.min(1, d / Math.max(1e-3, r)) + EXIT_TIME * 0.85)
+      }
+      return at
+    }),
   })
 }
 
@@ -335,15 +366,15 @@ function next() {
 
 function animateShow(s: Show, t: number) {
   s.board.tiles.forEach((tile, i) => {
-    const delay = s.window * easeInOutSine(tile.placement.reveal)
-    const p = clamp01((t - s.start - delay) / RISE_TIME)
-    const g = clamp01((t - s.start - delay - GROW_DELAY) / GROW_TIME)
+    const begin = Math.max(s.start + s.window * easeInOutSine(tile.placement.reveal), s.notBefore[i])
+    const p = clamp01((t - begin) / RISE_TIME)
+    const g = clamp01((t - begin - GROW_DELAY) / GROW_TIME)
 
     let rise = p > 0 ? easeOutBack(p) : 0
     let size = easeOutQuint(clamp01(p * 1.6))
     let grow = g > 0 ? easeOutBack(g, 1.7) : 0
     if (s.exitStart !== null) {
-      const exitDelay = EXIT_WINDOW * (1 - tile.placement.reveal)
+      const exitDelay = EXIT_WINDOW * Math.min(1, s.ring[i])
       const e = clamp01((t - s.exitStart - exitDelay) / EXIT_TIME)
       rise *= 1 - easeInCubic(e)
       size *= 1 - easeInCubic(clamp01(e * 1.2))
@@ -366,22 +397,47 @@ function disposeFinished(t: number) {
       scene.remove(s.board.group)
       s.board.dispose()
       shows.splice(i, 1)
+      if (!shows.some((o) => o.exitStart !== null)) {
+        fitShadow(liveShadowRadius)
+        sun.shadow.needsUpdate = true
+      }
     }
   }
 }
 
+/**
+ * Each light stays bound to one house until that house has shrunk away, then goes to a house
+ * that is still dark. Lights never jump while lit, and the leaving village dims out with its houses.
+ */
+const lightSlots: ({ board: Board; tile: number } | null)[] = WINDOW_LIGHTS.map(() => null)
 function updateWindowLights() {
+  const boards = new Set(shows.map((s) => s.board))
+  const taken = new Set<string>()
+  lightSlots.forEach((slot, k) => {
+    const tile = slot && boards.has(slot.board) ? slot.board.tiles[slot.tile] : null
+    if (!slot || !tile || (tile.grow < 0.005 && shows.find((s) => s.board === slot.board)?.exitStart != null)) lightSlots[k] = null
+    else taken.add(`${slot.board.group.id}:${slot.tile}`)
+  })
   const live = shows.find((s) => s.exitStart === null)
-  const lit = live ? live.board.tiles.map((t, i) => [t, i] as const).filter(([t]) => t.light) : []
+  if (live) {
+    live.board.tiles.forEach((t, i) => {
+      if (!t.light || taken.has(`${live.board.group.id}:${i}`)) return
+      const free = lightSlots.indexOf(null)
+      if (free < 0) return
+      lightSlots[free] = { board: live.board, tile: i }
+      taken.add(`${live.board.group.id}:${i}`)
+    })
+  }
   WINDOW_LIGHTS.forEach((light, k) => {
-    const entry = lit[k]
-    if (!live || !entry || entry[0].scale < 0.01) {
+    const slot = lightSlots[k]
+    if (!slot) {
       light.intensity = 0
       return
     }
-    live.board.lightPosition(entry[1], light.position)
+    const tile = slot.board.tiles[slot.tile]
+    slot.board.lightPosition(slot.tile, light.position)
     const flicker = 0.93 + Math.sin(performance.now() * 0.006 + light.position.x) * 0.04
-    light.intensity = current.windows * 2.2 * flicker * Math.min(1, entry[0].grow)
+    light.intensity = current.windows * 2.2 * flicker * clamp01(tile.grow) * (tile.scale > 0.01 ? 1 : 0)
   })
 }
 
@@ -434,6 +490,7 @@ current = cloneMood(targetMood)
 distance = distanceGoal * 1.15
 focus.copy(focusGoal)
 target.copy(targetGoal)
+focalLength.value = focalGoal
 const forward = new Vector3()
 
 renderer.setAnimationLoop(() => {
@@ -447,6 +504,7 @@ renderer.setAnimationLoop(() => {
   distance += (distanceGoal - distance) * (1 - Math.exp(-dt * 1.5))
   focus.lerp(focusGoal, 1 - Math.exp(-dt * 1.2))
   target.lerp(targetGoal, 1 - Math.exp(-dt * 1.2))
+  focalLength.value += (focalGoal - focalLength.value) * (1 - Math.exp(-dt * 1.2))
   const az = AZIMUTH + Math.sin(t * 0.06) * 0.07
   camera.position.set(
     target.x + Math.cos(ELEVATION) * Math.cos(az) * distance,

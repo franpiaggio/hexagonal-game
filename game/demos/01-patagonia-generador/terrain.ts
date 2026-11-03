@@ -88,7 +88,8 @@ export function createField(landscape: Landscape, R: number) {
       const dd = (cx - x) ** 2 + (cz - z) ** 2
       if (dd < d) d = dd
     }
-    return smoothstep(0.82 * R, 2.0 * R, Math.sqrt(d))
+    // Wide foothill band: lone mountain cells become rounded hills, not steep cones.
+    return smoothstep(0.82 * R, 2.6 * R, Math.sqrt(d))
   }
 
   function mountainHeight(x: number, z: number) {
@@ -113,11 +114,13 @@ export function createField(landscape: Landscape, R: number) {
     // so foothills stay soft and the summits get craggy.
     const alt = smoothstep(0.3, 2.2, body)
     let crag = 0
-    let amp = 0.4
+    let amp = 0.32
     let f = 1.15
     for (let o = 0; o < 2; o++) {
-      const r = 1 - Math.abs(2 * fbm(wx * f, wz * f, seed + 50 + o, 2) - 1)
-      crag += (r * r * r - 0.3) * amp
+      // Rounded ridge: |v| with a soft knee, so crests are bevelled instead of knife-edged.
+      const v = 2 * fbm(wx * f, wz * f, seed + 50 + o, 2) - 1
+      const r = 1 - Math.sqrt(v * v + 0.015)
+      crag += (r * r - 0.3) * amp
       amp *= 0.5
       f *= 2.1
     }
@@ -126,8 +129,8 @@ export function createField(landscape: Landscape, R: number) {
     const step = 0.22
     const t = body / step
     const fl = Math.floor(t)
-    const terr = (fl + smoothstep(0.15, 0.85, t - fl)) * step
-    body = body + (terr - body) * 0.55 * smoothstep(0.35, 1.0, body)
+    const terr = (fl + smoothstep(0.1, 0.9, t - fl)) * step
+    body = body + (terr - body) * 0.3 * smoothstep(0.35, 1.0, body)
     return Math.pow(m, 1.4) * Math.max(0, body)
   }
 
@@ -163,7 +166,19 @@ export function createField(landscape: Landscape, R: number) {
     return out
   }
 
-  return { sample, waterSdf, mountainHeight, mountainTrees }
+  /**
+   * Surface normal straight from the field. Neighbouring cells sample the same function, so
+   * shading runs seamlessly across cell borders (per-mesh vertex normals would crease there).
+   */
+  function normal(x: number, z: number, y = sample(x, z).y) {
+    const e = 0.035
+    const nx = y - sample(x + e, z).y
+    const nz = y - sample(x, z + e).y
+    const l = Math.hypot(nx, e, nz)
+    return [nx / l, e / l, nz / l] as const
+  }
+
+  return { sample, waterSdf, mountainHeight, mountainTrees, normal }
 }
 
 /** Barycentric subdivision of a pointy-top hexagon; returns local XZ points and triangle indices. */
@@ -217,7 +232,7 @@ export type CustomTileGeometry = {
 }
 
 /** Geometry for one custom cell centred at world (cx, cz), in tile-local coordinates. */
-export function buildCustomTile(field: Field, cx: number, cz: number, R: number, detail: number, faceted = false): CustomTileGeometry {
+export function buildCustomTile(field: Field, cx: number, cz: number, R: number, detail: number): CustomTileGeometry {
   const { pts, tris, boundary } = grid(R, detail)
   const count = pts.length
   const pos = new Float32Array(count * 3)
@@ -237,7 +252,9 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
   const ground = new BufferGeometry()
   ground.setAttribute('position', new BufferAttribute(pos, 3))
   ground.setIndex(tris)
-  ground.computeVertexNormals()
+  const nrm = new Float32Array(count * 3)
+  pts.forEach(([x, z], i) => nrm.set(field.normal(cx + x, cz + z, heights[i]), i * 3))
+  ground.setAttribute('normal', new BufferAttribute(nrm, 3))
 
   // Vertex colours: grass, sandy banks, wet mud below the waterline, rock on steep slopes.
   const normals = ground.getAttribute('normal')
@@ -253,21 +270,22 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
     c.lerp(MUD, smoothstep(WATER_LEVEL + 0.01, WATER_LEVEL - 0.05, y))
     if (mount[i] > 0.02) {
       const steep = smoothstep(0.86, 0.62, normals.getY(i))
-      const warm = fbm((cx + x) * 0.8, (cz + z) * 0.8, 77, 2)
-      const rock = ROCK.clone().lerp(ROCK_WARM, warm).lerp(SCREE, smoothstep(0.3, 0.9, fbm((cx + x) * 2.5, (cz + z) * 2.5, 78, 2)) * 0.4)
+      // Height feeds the noise domain too, so cliff faces get bands instead of vertical smears.
+      const wx = cx + x + y * 0.7
+      const wz = cz + z - y * 0.5
+      const warm = fbm(wx * 0.8, wz * 0.8, 77, 2)
+      const strata = 0.5 + 0.5 * Math.sin(y * 9 + fbm(wx * 0.6, wz * 0.6, 79, 2) * 4)
+      const rock = ROCK.clone()
+        .lerp(ROCK_WARM, warm)
+        .lerp(SCREE, smoothstep(0.3, 0.9, fbm(wx * 2.5, wz * 2.5, 78, 2)) * 0.4)
+        .multiplyScalar(0.92 + strata * 0.12)
       const rocky = Math.max(steep, smoothstep(0.7, 1.5, mount[i]))
       c.lerp(rock, rocky)
     }
     colors.set([c.r, c.g, c.b], i * 3)
   }
   ground.setAttribute('color', new BufferAttribute(colors, 3))
-  // Rock reads crisper faceted: flat per-triangle normals keep the low-poly kit language
-  // and give the lens real edges to resolve inside the focus band.
-  const surface = faceted ? ground.toNonIndexed() : ground
-  if (faceted) {
-    surface.computeVertexNormals()
-    ground.dispose()
-  }
+  const surface = ground
 
   // Soil walls around the cell, from the surface down to the soil block.
   const wallPos: number[] = []

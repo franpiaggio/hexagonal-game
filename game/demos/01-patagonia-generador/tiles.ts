@@ -22,7 +22,7 @@ import { MeshStandardNodeMaterial } from 'three/webgpu'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
-import { AXIAL_DIRS, axialToWorld, key } from '../../src/shared/hex'
+import { axialToWorld } from '../../src/shared/hex'
 import type { KitTile, Landscape, Placement } from './generator'
 import {
   createFoliageMaterial,
@@ -39,7 +39,8 @@ import { createPropGeometries, scatterOnField, scatterOnKit, type Spot } from '.
 
 export const TILE_RADIUS = 2
 const BASE_HEIGHT = 1.6
-const KIT: KitTile[] = ['pradera', 'bosque', 'caserio', 'montana']
+// Mountains are fully procedural (terrain.ts): the kit's peak model is not loaded.
+const KIT: KitTile[] = ['pradera', 'bosque', 'caserio']
 const Y_AXIS = new Vector3(0, 1, 0)
 const X_AXIS = new Vector3(1, 0, 0)
 const Z_AXIS = new Vector3(0, 0, 1)
@@ -147,8 +148,6 @@ export async function loadKit(baseUrl: string) {
         bakeQuantization(mesh)
         const material = replace(mesh.material as Material)
         const isGround = material.name === 'suelo y pasto'
-        // Mountains: only the small peak is reused; its pedestal is dropped.
-        if (id === 'montana' && isGround) return
         list.push({ geometry: mesh.geometry, material, ground: isGround || material.name === 'agua' })
       })
       parts.set(id, list)
@@ -182,7 +181,6 @@ export async function loadKit(baseUrl: string) {
       if (!b) buckets.set(k, (b = { geometry, material, entries: [], cast }))
       b.entries.push(entry)
     }
-    const mountainCells = new Set(landscape.tiles.filter((t) => t.tile === 'montana').map((t) => key(t.q, t.r)))
     const { forestCopies, villageCopies } = landscape.spec
     const hash = (q: number, r: number, n: number) => {
       const v = Math.sin((q * 127.1 + r * 311.7 + n * 74.7 + landscape.spec.seed) * 43758.5453)
@@ -213,7 +211,7 @@ export async function loadKit(baseUrl: string) {
         const isMountain = placement.tile === 'montana'
         const root = new Group()
         root.matrixAutoUpdate = false
-        const geo = buildCustomTile(field, x, z, TILE_RADIUS, isMountain ? 34 : 18, isMountain)
+        const geo = buildCustomTile(field, x, z, TILE_RADIUS, isMountain ? 40 : 18)
         const surface = new Mesh(geo.ground, ground)
         surface.receiveShadow = true
         surface.castShadow = isMountain
@@ -243,25 +241,6 @@ export async function loadKit(baseUrl: string) {
               new Vector3(t.s, t.s * (0.9 + (t.r % 0.4)), t.s),
             )
             add('conifer', conifer, treeMaterial, { tile: i, pre, prop: [1, 1, 1] })
-          }
-          // Now and then a lone small peak from the original kit, never chained.
-          let mountainNeighbours = 0
-          for (const d of AXIAL_DIRS) if (mountainCells.has(key(placement.q + d.q, placement.r + d.r))) mountainNeighbours++
-          if (mountainNeighbours <= 1 && hash(placement.q, placement.r, 5) < 0.45) {
-            const jx = (hash(placement.q, placement.r, 6) - 0.5) * 1.2
-            const jz = (hash(placement.q, placement.r, 7) - 0.5) * 1.2
-            const k = 0.55 + hash(placement.q, placement.r, 8) * 0.25
-            let low = Infinity
-            for (let a = 0; a < 6; a++) {
-              const ang = (a * Math.PI) / 3
-              low = Math.min(low, field.mountainHeight(x + jx + Math.cos(ang) * 0.9 * k, z + jz + Math.sin(ang) * 0.9 * k))
-            }
-            const pre = new Matrix4().compose(
-              new Vector3(jx, low - 0.22 * k, jz),
-              new Quaternion().setFromAxisAngle(Y_AXIS, hash(placement.q, placement.r, 9) * Math.PI * 2),
-              new Vector3(k, k, k),
-            )
-            parts.get('montana')!.forEach((part, p) => add(`peak:${p}`, part.geometry, part.material, { tile: i, pre, prop: [1, 1, 1] }))
           }
         }
         return state
