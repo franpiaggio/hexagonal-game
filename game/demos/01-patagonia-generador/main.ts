@@ -115,7 +115,8 @@ let current: Mood = cloneMood(targetMood)
 const bloomStrength = uniform(0.05)
 
 function blendMood(dt: number) {
-  const a = 1 - Math.exp(-dt * 1.4)
+  // Fast: the new season must be in place before the next board rises out of the void.
+  const a = 1 - Math.exp(-dt * 4.5)
   const m = current as Record<string, unknown>
   const t = targetMood as Record<string, unknown>
   for (const k of Object.keys(t)) {
@@ -252,7 +253,7 @@ function showLandscape(i: number) {
   const busy = shows.some((s) => s.exitStart !== null)
   shows.push({
     board,
-    start: now() + (busy ? EXIT_WINDOW * 0.6 : 0.2),
+    start: now() + (busy ? EXIT_WINDOW * 0.9 : 0.2),
     exitStart: null,
     window: 1.6 + board.tiles.length * 0.022,
     tilts: board.tiles.map(() => [(Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3]),
