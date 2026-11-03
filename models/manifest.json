@@ -1,0 +1,238 @@
+{
+  "name": "Patagonia · miniatura / base 02",
+  "version": 2,
+  "radius": 2.0,
+  "apothem": 1.7320508075688772,
+  "thickness": 0.26,
+  "units": "meters",
+  "orientation": "pointy-top",
+  "upAxis": "Y",
+  "origin": "center of tile at ground surface",
+  "waterWidth": 0.7,
+  "bankWidth": 0.84,
+  "waterHeight": 0.027,
+  "edgeOrder": "0 east, then +60 degrees in Blender XY; in Three.js direction = [cos(a),0,-sin(a)]",
+  "axialToThree": "[sqrt(3)*R*(q+r/2), 0, -1.5*R*r]",
+  "rotation": "Three.js rotation.y = rotationSteps * PI / 3",
+  "tiles": [
+    {
+      "id": "pradera",
+      "file": "glb/pradera.glb",
+      "waterEdges": [],
+      "triangles": 2139,
+      "vertices": 1818
+    },
+    {
+      "id": "bosque",
+      "file": "glb/bosque.glb",
+      "waterEdges": [],
+      "triangles": 23760,
+      "vertices": 24219
+    },
+    {
+      "id": "caserio",
+      "file": "glb/caserio.glb",
+      "waterEdges": [],
+      "triangles": 6044,
+      "vertices": 5288
+    },
+    {
+      "id": "montana",
+      "file": "glb/montana.glb",
+      "waterEdges": [],
+      "triangles": 12037,
+      "vertices": 10424
+    },
+    {
+      "id": "rio_recto",
+      "file": "glb/rio_recto.glb",
+      "waterEdges": [
+        0,
+        3
+      ],
+      "triangles": 5991,
+      "vertices": 5846
+    },
+    {
+      "id": "rio_curvo",
+      "file": "glb/rio_curvo.glb",
+      "waterEdges": [
+        1,
+        3
+      ],
+      "triangles": 6048,
+      "vertices": 5902
+    },
+    {
+      "id": "laguna",
+      "file": "glb/laguna.glb",
+      "waterEdges": [
+        0
+      ],
+      "triangles": 7580,
+      "vertices": 7399
+    }
+  ],
+  "demoLayout": [
+    {
+      "tile": "laguna",
+      "q": -2,
+      "r": 0,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "bosque",
+      "q": -2,
+      "r": 1,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "montana",
+      "q": -2,
+      "r": 2,
+      "rotationSteps": 1
+    },
+    {
+      "tile": "pradera",
+      "q": -1,
+      "r": -1,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "rio_recto",
+      "q": -1,
+      "r": 0,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "bosque",
+      "q": -1,
+      "r": 1,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "montana",
+      "q": -1,
+      "r": 2,
+      "rotationSteps": 4
+    },
+    {
+      "tile": "bosque",
+      "q": 0,
+      "r": -2,
+      "rotationSteps": 2
+    },
+    {
+      "tile": "caserio",
+      "q": 0,
+      "r": -1,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "rio_curvo",
+      "q": 0,
+      "r": 0,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "rio_curvo",
+      "q": 0,
+      "r": 1,
+      "rotationSteps": 3
+    },
+    {
+      "tile": "bosque",
+      "q": 0,
+      "r": 2,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "pradera",
+      "q": 1,
+      "r": -2,
+      "rotationSteps": 4
+    },
+    {
+      "tile": "pradera",
+      "q": 1,
+      "r": -1,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "caserio",
+      "q": 1,
+      "r": 0,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "laguna",
+      "q": 1,
+      "r": 1,
+      "rotationSteps": 3
+    },
+    {
+      "tile": "bosque",
+      "q": 2,
+      "r": -2,
+      "rotationSteps": 0
+    },
+    {
+      "tile": "pradera",
+      "q": 2,
+      "r": -1,
+      "rotationSteps": 2
+    },
+    {
+      "tile": "bosque",
+      "q": 2,
+      "r": 0,
+      "rotationSteps": 3
+    }
+  ],
+  "palette": {
+    "grass": "#8e9a75",
+    "grass_light": "#98a47e",
+    "grass_dark": "#798866",
+    "earth": "#978467",
+    "earth_dark": "#7d6a52",
+    "sand": "#b4ab8b",
+    "pine": "#476d5d",
+    "pine_light": "#66816b",
+    "pine_dark": "#365a50",
+    "leaf": "#839967",
+    "leaf_light": "#a1ab78",
+    "trunk": "#705947",
+    "stone": "#969b98",
+    "stone_light": "#b1b1a6",
+    "stone_dark": "#6d7674",
+    "snow": "#e5e5db",
+    "snow_shadow": "#cddbd5",
+    "wood": "#ad7c50",
+    "wood_light": "#c29360",
+    "wood_dark": "#71513b",
+    "plaster": "#e7dcc0",
+    "roof": "#995f4b",
+    "roof_light": "#ad7157",
+    "slate": "#526d73",
+    "window": "#384f52",
+    "glass": "#d5b579",
+    "water": "#678f89",
+    "water_light": "#719992",
+    "water_dark": "#59837e",
+    "foam": "#c5d9c4",
+    "flower": "#dfcc91"
+  },
+  "presentation": {
+    "physicalScale": 0.04,
+    "camera": "orthographic",
+    "lensMillimeters": 50,
+    "fStop": 16,
+    "focusBlender": [
+      0,
+      -0.8,
+      0.35
+    ],
+    "note": "Depth of field belongs to the camera/postprocessing; individual GLBs contain no blur."
+  },
+  "materials": "PBR with embedded textures, vertex colors, tangent normal maps and MASK foliage"
+}
