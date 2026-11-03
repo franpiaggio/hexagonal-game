@@ -3,7 +3,6 @@ import {
   AgXToneMapping,
   Color,
   DirectionalLight,
-  Group,
   HemisphereLight,
   PCFShadowMap,
   PerspectiveCamera,
@@ -12,20 +11,45 @@ import {
   Vector3,
 } from 'three'
 import { RenderPipeline, WebGPURenderer } from 'three/webgpu'
-import { float, length, mix, nodeObject, pass, screenUV, smoothstep, uniform, vec2, vec4 } from 'three/tsl'
+import {
+  colorToDirection,
+  directionToColor,
+  float,
+  hash,
+  length,
+  mix,
+  mrt,
+  nodeObject,
+  normalView,
+  output,
+  pass,
+  renderOutput,
+  sample,
+  saturation,
+  screenUV,
+  smoothstep,
+  time,
+  uniform,
+  vec2,
+  vec3,
+  vec4,
+} from 'three/tsl'
+import { ao } from 'three/addons/tsl/display/GTAONode.js'
+import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js'
-import { axialToWorld } from '../../src/shared/hex'
 import { generateLandscape, specForIndex } from './generator'
 import { mood as moodUniforms } from './materials'
 import { MOODS, type Mood } from './moods'
 import { createField } from './terrain'
-import { loadKit, TILE_RADIUS, type TileInstance } from './tiles'
+import { loadKit, type Board } from './tiles'
 
 // --- Renderer -------------------------------------------------------------------------
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!
 const renderer = new WebGPURenderer({ canvas, antialias: true })
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+// The post stack (AO + DoF + bloom) is fill-bound: 1.5× by default, full 2× with ?hq for recordings.
+const HQ = new URLSearchParams(window.location.search).has('hq')
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, HQ ? 2 : 1.5))
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.toneMapping = AgXToneMapping
 renderer.shadowMap.enabled = true
@@ -35,7 +59,7 @@ await renderer.init()
 // --- Scene: floating diorama over a soft radial backdrop --------------------------------
 
 const scene = new Scene()
-if (import.meta.env.DEV) Object.assign(window, { __scene: scene })
+if (import.meta.env.DEV) Object.assign(window, { __scene: scene, __renderer: renderer })
 
 const bgCenter = uniform(new Color('#5f7d86'))
 const bgEdge = uniform(new Color('#16242a'))
@@ -52,24 +76,24 @@ sun.castShadow = true
 sun.shadow.mapSize.set(4096, 4096)
 sun.shadow.bias = -0.0004
 sun.shadow.normalBias = 0.03
-sun.shadow.radius = 3
+sun.shadow.radius = 2
 scene.add(sun, sun.target)
 
 function fitShadow(boardRadius: number) {
-  const s = boardRadius + 3
+  const s = boardRadius + 4
   const cam = sun.shadow.camera
   cam.left = -s
   cam.right = s
   cam.top = s
   cam.bottom = -s
   cam.near = 1
-  cam.far = 160
+  cam.far = 200
   cam.updateProjectionMatrix()
 }
 
 // Fixed pool of warm window lights: changing the light count would recompile every material.
-const WINDOW_LIGHTS = Array.from({ length: 8 }, () => {
-  const light = new PointLight('#ffb36b', 0, 5, 2)
+const WINDOW_LIGHTS = Array.from({ length: 10 }, () => {
+  const light = new PointLight('#ffb36b', 0, 2.6, 2)
   scene.add(light)
   return light
 })
@@ -86,85 +110,99 @@ const cloneMood = (m: Mood): Mood => {
 }
 let targetMood: Mood = MOODS.dia
 let current: Mood = cloneMood(targetMood)
+const bloomStrength = uniform(0.05)
 
 function blendMood(dt: number) {
   const a = 1 - Math.exp(-dt * 1.4)
-  const m = current
-  const t = targetMood
-  m.bgCenter.lerp(t.bgCenter, a)
-  m.bgEdge.lerp(t.bgEdge, a)
-  m.sunColor.lerp(t.sunColor, a)
-  m.sunDir.lerp(t.sunDir, a).normalize()
-  m.hemiSky.lerp(t.hemiSky, a)
-  m.hemiGround.lerp(t.hemiGround, a)
-  m.grassTint.lerp(t.grassTint, a)
-  m.leafTint.lerp(t.leafTint, a)
-  m.needleTint.lerp(t.needleTint, a)
-  m.waterDeep.lerp(t.waterDeep, a)
-  m.waterShallow.lerp(t.waterShallow, a)
-  m.waterSky.lerp(t.waterSky, a)
-  m.sunIntensity += (t.sunIntensity - m.sunIntensity) * a
-  m.hemiIntensity += (t.hemiIntensity - m.hemiIntensity) * a
-  m.exposure += (t.exposure - m.exposure) * a
-  m.snowLine += (t.snowLine - m.snowLine) * a
-  m.saturation += (t.saturation - m.saturation) * a
-  m.windows += (t.windows - m.windows) * a
-
-  bgCenter.value.copy(m.bgCenter)
-  bgEdge.value.copy(m.bgEdge)
-  sun.color.copy(m.sunColor)
-  sun.intensity = m.sunIntensity
-  sun.position.copy(m.sunDir).multiplyScalar(70)
-  hemi.color.copy(m.hemiSky)
-  hemi.groundColor.copy(m.hemiGround)
-  hemi.intensity = m.hemiIntensity
-  renderer.toneMappingExposure = m.exposure
-  moodUniforms.grassTint.value.copy(m.grassTint)
-  moodUniforms.leafTint.value.copy(m.leafTint)
-  moodUniforms.needleTint.value.copy(m.needleTint)
-  moodUniforms.waterDeep.value.copy(m.waterDeep)
-  moodUniforms.waterShallow.value.copy(m.waterShallow)
-  moodUniforms.waterSky.value.copy(m.waterSky)
-  moodUniforms.snowLine.value = m.snowLine
-  moodUniforms.saturation.value = m.saturation
+  const m = current as Record<string, unknown>
+  const t = targetMood as Record<string, unknown>
+  for (const k of Object.keys(t)) {
+    const from = m[k]
+    const to = t[k]
+    if (from instanceof Color && to instanceof Color) from.lerp(to, a)
+    else if (from instanceof Vector3 && to instanceof Vector3) from.lerp(to, a).normalize()
+    else m[k] = (from as number) + ((to as number) - (from as number)) * a
+  }
+  const c = current
+  bgCenter.value.copy(c.bgCenter)
+  bgEdge.value.copy(c.bgEdge)
+  sun.color.copy(c.sunColor)
+  sun.intensity = c.sunIntensity
+  sun.position.copy(c.sunDir).multiplyScalar(80)
+  hemi.color.copy(c.hemiSky)
+  hemi.groundColor.copy(c.hemiGround)
+  hemi.intensity = c.hemiIntensity
+  renderer.toneMappingExposure = c.exposure
+  bloomStrength.value = c.bloom
+  moodUniforms.grassTint.value.copy(c.grassTint)
+  moodUniforms.leafTint.value.copy(c.leafTint)
+  moodUniforms.needleTint.value.copy(c.needleTint)
+  moodUniforms.waterDeep.value.copy(c.waterDeep)
+  moodUniforms.waterShallow.value.copy(c.waterShallow)
+  moodUniforms.waterSky.value.copy(c.waterSky)
+  moodUniforms.snowLine.value = c.snowLine
+  moodUniforms.snowCover.value = c.snowCover
+  moodUniforms.ice.value = c.ice
+  moodUniforms.caustics.value = c.caustics
+  moodUniforms.saturation.value = c.saturation
 }
 
-// --- Camera: low-FOV perspective sells the miniature ------------------------------------
+// --- Camera: high, low-FOV perspective sells the miniature -------------------------------
 
-const camera = new PerspectiveCamera(22, window.innerWidth / window.innerHeight, 1, 500)
-const ELEVATION = (36 * Math.PI) / 180
+const camera = new PerspectiveCamera(22, window.innerWidth / window.innerHeight, 1, 600)
+const ELEVATION = (40 * Math.PI) / 180
 const AZIMUTH = (42 * Math.PI) / 180
-const target = new Vector3(0, 0.2, 0)
+const target = new Vector3(0, 0.3, 0)
 let distance = 60
 let distanceGoal = 60
+/** Point of interest the lens focuses on (the village, if any). */
+const focus = new Vector3()
+const focusGoal = new Vector3()
 
 function distanceFor(boardRadius: number) {
   const halfFov = (camera.fov * Math.PI) / 360
   const fitV = (boardRadius * 0.95) / Math.tan(halfFov)
   const fitH = (boardRadius * 1.0) / (Math.tan(halfFov) * camera.aspect)
-  return Math.max(fitV * 0.82, fitH)
+  return Math.max(fitV * 0.8, fitH)
 }
 
-// --- Post: depth-based tilt-shift + vignette --------------------------------------------
+// --- Post: contact AO → depth-of-field tilt-shift → bloom → display-space grade ----------
 
 const focusDistance = uniform(60)
-const focalLength = uniform(9)
-const bokehScale = uniform(5)
+const focalLength = uniform(6)
+const bokehScale = uniform(6.5)
 
 const pipeline = new RenderPipeline(renderer)
+pipeline.outputColorTransform = false
 const scenePass = pass(scene, camera)
+scenePass.setMRT(mrt({ output, normal: directionToColor(normalView) }))
+const sceneColor = scenePass.getTextureNode('output')
+const normalTexture = scenePass.getTextureNode('normal')
+const sceneNormal = sample((uv) => colorToDirection(normalTexture.sample(uv)))
+const aoPass = ao(scenePass.getTextureNode('depth'), sceneNormal, camera)
+aoPass.resolutionScale = 0.5
+aoPass.radius.value = 0.35
+aoPass.thickness.value = 0.6
+const occlusion = nodeObject(aoPass).getTextureNode().r
+const occluded = vec4(sceneColor.rgb.mul(mix(float(1), occlusion, 0.75)), sceneColor.a)
 // DepthOfFieldNode typings lag the runtime: wrap it so it composes like any vec4 node.
-const blurred = nodeObject(
-  dof(scenePass.getTextureNode(), scenePass.getViewZNode(), focusDistance, focalLength, bokehScale),
-) as unknown as ReturnType<typeof vec4>
+const blurred = nodeObject(dof(occluded, scenePass.getViewZNode(), focusDistance, focalLength, bokehScale)) as unknown as ReturnType<typeof vec4>
+const glow = nodeObject(bloom(blurred, 1, 0.55, 0.82)) as unknown as ReturnType<typeof vec4>
+const hdr = blurred.add(glow.mul(bloomStrength))
+// Tone map first, then grade in display space: miniature photos read punchy and contrasty.
+const display = renderOutput(hdr)
+const contrasted = display.rgb.sub(0.5).mul(1.08).add(0.5)
+const graded = saturation(contrasted, 1.08)
 const vignette = smoothstep(0.38, 1.0, length(screenUV.sub(0.5).mul(vec2(1.2, 1.0))))
-pipeline.outputNode = blurred.mul(mix(float(1), float(0.8), vignette))
+// hash() takes a scalar: fold both screen axes and time into one seed (a vec2 would only use x → stripes).
+const grain = hash(screenUV.x.mul(1913.7).add(screenUV.y.mul(7919.3)).add(time.mul(13.17))).sub(0.5).mul(0.016)
+pipeline.outputNode = vec4(graded.mul(mix(float(1), float(0.82), vignette)).add(vec3(grain)), 1)
 
 // --- Landscapes --------------------------------------------------------------------------
 
 const kit = await loadKit(new URL('../../assets/patagonia/', window.location.href).href)
 
-type Show = { group: Group; tiles: TileInstance[]; start: number; exitStart: number | null; window: number }
+type Show = { board: Board; start: number; exitStart: number | null; window: number; tilts: [number, number][] }
 const shows: Show[] = []
 const params = new URLSearchParams(window.location.search)
 let index = Number(params.get('v') ?? 0) || 0
@@ -186,38 +224,43 @@ const easeOutBack = (x: number, s = 1.15) => 1 + (s + 1) * Math.pow(x - 1, 3) + 
 
 const now = () => performance.now() / 1000
 
-function boardRadiusOf(tiles: TileInstance[]) {
-  let r = 0
-  for (const t of tiles) {
-    const [x, z] = axialToWorld(t.placement.q, t.placement.r, TILE_RADIUS)
-    r = Math.max(r, Math.hypot(x, z))
-  }
-  return r + TILE_RADIUS
-}
+const boardRadiusOf = (board: Board) => Math.max(...board.tiles.map((t) => Math.hypot(t.x, t.z))) + 2
 
 function showLandscape(i: number) {
   const landscape = generateLandscape(specForIndex(i))
-  const field = createField(landscape, TILE_RADIUS)
-  const group = new Group()
-  const tiles = landscape.tiles.map((p) => kit.createTile(p, field))
-  for (const t of tiles) {
-    t.root.userData.tilt = [(Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3]
-    t.root.visible = false
-    group.add(t.root)
-  }
-  scene.add(group)
-  const radius = boardRadiusOf(tiles)
+  const field = createField(landscape, 2)
+  const board = kit.buildBoard(landscape, field)
+  scene.add(board.group)
+
+  const radius = boardRadiusOf(board)
   distanceGoal = distanceFor(radius)
   fitShadow(radius)
-  focalLength.value = radius * 0.55
+  focalLength.value = radius * 0.32
   targetMood = MOODS[landscape.spec.mood]
 
-  const lit = tiles.filter((t) => t.lightAnchor)
-  WINDOW_LIGHTS.forEach((light, k) => (light.userData.anchor = lit[k]?.lightAnchor ?? null))
+  // Focus on the village (the story of the shot); fall back to the board centre.
+  const village = board.tiles.filter((t) => t.placement.tile === 'caserio')
+  focusGoal.set(0, 0.2, 0)
+  if (village.length) {
+    for (const t of village) focusGoal.add(new Vector3(t.x, 0, t.z).divideScalar(village.length))
+    focusGoal.multiplyScalar(0.7)
+  }
 
+  lastChange = now()
   const busy = shows.some((s) => s.exitStart !== null)
-  shows.push({ group, tiles, start: now() + (busy ? EXIT_WINDOW * 0.6 : 0.2), exitStart: null, window: 1.6 + tiles.length * 0.028 })
+  shows.push({
+    board,
+    start: now() + (busy ? EXIT_WINDOW * 0.6 : 0.2),
+    exitStart: null,
+    window: 1.6 + board.tiles.length * 0.022,
+    tilts: board.tiles.map(() => [(Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3]),
+  })
 }
+
+// The diorama is static once built: only re-render the 4K shadow map while things move.
+let lastChange = 0
+sun.shadow.autoUpdate = false
+const SETTLE_SECONDS = 7
 
 function next() {
   for (const s of shows) if (s.exitStart === null) s.exitStart = now()
@@ -227,7 +270,7 @@ function next() {
 }
 
 function animateShow(s: Show, t: number) {
-  for (const tile of s.tiles) {
+  s.board.tiles.forEach((tile, i) => {
     const delay = s.window * easeInOutSine(tile.placement.reveal)
     const p = clamp01((t - s.start - delay) / RISE_TIME)
     const g = clamp01((t - s.start - delay - GROW_DELAY) / GROW_TIME)
@@ -242,47 +285,40 @@ function animateShow(s: Show, t: number) {
       size *= 1 - easeInCubic(clamp01(e * 1.2))
       grow *= 1 - easeOutCubic(clamp01(e * 1.8))
     }
-
-    const root = tile.root
-    root.visible = size > 0.002
-    root.position.y = -RISE_DEPTH * (1 - rise)
-    root.scale.setScalar(Math.max(size, 0.001))
-    const [tx, tz] = root.userData.tilt as [number, number]
     const wobble = (1 - easeOutCubic(p)) * (s.exitStart === null ? 1 : 0)
-    root.rotation.x = tx * wobble
-    root.rotation.z = tz * wobble
-    for (const prop of tile.props) {
-      const [sx, sy, sz] = prop.scale
-      prop.object.scale.set(sx, Math.max(grow * sy, 0.0001), sz)
-    }
-  }
+    tile.y = -RISE_DEPTH * (1 - rise)
+    tile.scale = size
+    tile.grow = grow
+    tile.tiltX = s.tilts[i][0] * wobble
+    tile.tiltZ = s.tilts[i][1] * wobble
+  })
+  s.board.sync()
 }
 
 function disposeFinished(t: number) {
   for (let i = shows.length - 1; i >= 0; i--) {
     const s = shows[i]
     if (s.exitStart !== null && t - s.exitStart > EXIT_WINDOW + EXIT_TIME + 0.1) {
-      scene.remove(s.group)
-      s.tiles.forEach((tile) => tile.dispose())
+      scene.remove(s.board.group)
+      s.board.dispose()
       shows.splice(i, 1)
     }
   }
 }
 
-const anchorPos = new Vector3()
 function updateWindowLights() {
-  for (const light of WINDOW_LIGHTS) {
-    const anchor = light.userData.anchor as TileInstance['lightAnchor']
-    const root = anchor?.parent
-    if (!anchor || !root || !root.visible) {
+  const live = shows.find((s) => s.exitStart === null)
+  const lit = live ? live.board.tiles.map((t, i) => [t, i] as const).filter(([t]) => t.light) : []
+  WINDOW_LIGHTS.forEach((light, k) => {
+    const entry = lit[k]
+    if (!live || !entry || entry[0].scale < 0.01) {
       light.intensity = 0
-      continue
+      return
     }
-    anchor.getWorldPosition(anchorPos)
-    light.position.copy(anchorPos)
-    const flicker = 0.92 + Math.sin(performance.now() * 0.006 + anchorPos.x) * 0.05
-    light.intensity = current.windows * 9 * flicker * Math.min(1, root.scale.x)
-  }
+    live.board.lightPosition(entry[1], light.position)
+    const flicker = 0.93 + Math.sin(performance.now() * 0.006 + light.position.x) * 0.04
+    light.intensity = current.windows * 2.2 * flicker * Math.min(1, entry[0].grow)
+  })
 }
 
 // --- Input: click / tap anywhere, space / arrows; A toggles autoplay -----------------------
@@ -318,7 +354,7 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight)
   const live = shows.find((s) => s.exitStart === null)
-  if (live) distanceGoal = distanceFor(boardRadiusOf(live.tiles))
+  if (live) distanceGoal = distanceFor(boardRadiusOf(live.board))
 })
 
 // --- Loop --------------------------------------------------------------------------------
@@ -327,6 +363,8 @@ let last = now()
 showLandscape(index)
 current = cloneMood(targetMood)
 distance = distanceGoal * 1.15
+focus.copy(focusGoal)
+const forward = new Vector3()
 
 renderer.setAnimationLoop(() => {
   const t = now()
@@ -337,6 +375,7 @@ renderer.setAnimationLoop(() => {
 
   blendMood(dt)
   distance += (distanceGoal - distance) * (1 - Math.exp(-dt * 1.5))
+  focus.lerp(focusGoal, 1 - Math.exp(-dt * 1.2))
   const az = AZIMUTH + Math.sin(t * 0.06) * 0.07
   camera.position.set(
     target.x + Math.cos(ELEVATION) * Math.cos(az) * distance,
@@ -344,9 +383,15 @@ renderer.setAnimationLoop(() => {
     target.z + Math.cos(ELEVATION) * Math.sin(az) * distance,
   )
   camera.lookAt(target)
-  focusDistance.value = distance
+  // Focal plane through the point of interest, measured along the view axis.
+  camera.getWorldDirection(forward)
+  focusDistance.value = forward.dot(focus.clone().sub(camera.position))
 
-  for (const s of shows) animateShow(s, t)
+  const settled = t - lastChange > SETTLE_SECONDS + (shows.at(-1)?.window ?? 0)
+  if (!settled) {
+    for (const s of shows) animateShow(s, t)
+    sun.shadow.needsUpdate = true
+  }
   disposeFinished(t)
   updateWindowLights()
   pipeline.render()

@@ -1,22 +1,29 @@
 // TSL materials that replace the kit's originals.
 // Everything is shaded in world space so neighbouring tiles read as one continuous landscape,
-// and every tint goes through `mood` uniforms so day / dusk / autumn / night blend smoothly.
+// and every tint goes through `mood` uniforms so day / dusk / autumn / night / winter blend smoothly.
 
 import { Color, DoubleSide, MeshStandardMaterial, Texture } from 'three'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
 import {
   Fn,
   attribute,
+  bumpMap,
   color,
+  dot,
   float,
+  max,
   mix,
-  modelPosition,
   mx_fractal_noise_float,
   mx_noise_float,
+  mx_worley_noise_float,
+  normalView,
   normalWorld,
   positionGeometry,
   positionLocal,
+  positionViewDirection,
   positionWorld,
+  pow,
+  saturate,
   saturation,
   sin,
   smoothstep,
@@ -35,28 +42,37 @@ export const mood = {
   leafTint: uniform(new Color(1, 1, 1)),
   needleTint: uniform(new Color(1, 1, 1)),
   snowLine: uniform(1.6),
+  /** 0..1 blanket of snow over every upward-facing surface (winter). */
+  snowCover: uniform(0),
+  /** 0..1 frozen water. */
+  ice: uniform(0),
   waterDeep: uniform(new Color('#1d4a52')),
   waterShallow: uniform(new Color('#5d9f95')),
   saturation: uniform(1.15),
   /** Colour the water mirrors: a lighter take on the backdrop. */
   waterSky: uniform(new Color('#9fb8c0')),
+  /** How much light reaches the lake bed as caustics. */
+  caustics: uniform(1),
 }
 
-/** Snow on upward-facing surfaces above the snow line, with a ragged noisy edge. */
+const SNOW = color('#eef1f4')
+
+/** Snow on upward-facing surfaces: above the snow line, or everywhere with `snowCover`. */
 const snowMask = Fn(() => {
   const ragged = mx_noise_float(positionWorld.xz.mul(1.7)).mul(0.22)
   const height = smoothstep(mood.snowLine.sub(0.12), mood.snowLine.add(0.12), positionWorld.y.add(ragged))
-  return height.mul(smoothstep(0.35, 0.7, normalWorld.y))
+  const drift = smoothstep(0.25, 0.6, mx_noise_float(positionWorld.xz.mul(0.9)).mul(0.5).add(0.5).add(mood.snowCover.mul(0.9)))
+  const blanket = mood.snowCover.mul(drift)
+  return max(height, blanket).mul(smoothstep(0.35, 0.7, normalWorld.y))
 })
-
-const SNOW = color('#eef0f2')
 
 /**
  * Ground: drops the noisy tiled texture + crumpled normal map of the kit.
  * Keeps vertex colours (grass / sand banks / rock) and adds large soft meadow patches,
  * mid-frequency mottling and a fine grain, all continuous across tiles.
+ * Below the waterline it becomes a lake bed lit by moving caustics.
  */
-export function createGroundMaterial() {
+export function createGroundMaterial(waterLevel: number) {
   const material = new MeshStandardNodeMaterial({ roughness: 0.93, metalness: 0 })
 
   material.colorNode = Fn(() => {
@@ -87,7 +103,19 @@ export function createGroundMaterial() {
     const soil = mix(color('#4a3a2a'), color('#76604a'), smoothstep(-0.12, -0.02, y))
     const side = mix(soil, top, smoothstep(-0.02, -0.004, y))
     const surface = mix(side, top, smoothstep(0.35, 0.75, normalWorld.y))
-    return mix(surface, SNOW, snowMask())
+
+    // Lake bed: darker with depth, with caustic light lines dancing on it.
+    const depth = saturate(float(waterLevel).sub(y).mul(9))
+    const cells = mx_worley_noise_float(vec3(p.mul(2.6), time.mul(0.35)))
+    const cells2 = mx_worley_noise_float(vec3(p.mul(3.4).add(7), time.mul(0.28)))
+    const caustic = pow(saturate(float(1).sub(cells.min(cells2).mul(2.2))), 3).mul(mood.caustics).mul(float(1).sub(mood.ice))
+    const bed = surface.mul(mix(float(1), float(0.55), depth)).add(caustic.mul(0.45).mul(depth.mul(1.4).min(1)))
+    const wet = surface.mul(0.82)
+    const underwater = smoothstep(waterLevel + 0.004, waterLevel - 0.012, y).mul(smoothstep(0.3, 0.6, normalWorld.y))
+    const atShore = smoothstep(waterLevel + 0.03, waterLevel + 0.004, y)
+    const grounded = mix(mix(surface, wet, atShore), bed, underwater)
+
+    return mix(grounded, SNOW, snowMask().mul(float(1).sub(underwater)))
   })()
 
   return material
@@ -105,7 +133,8 @@ export function createSoilMaterial() {
     const layered = earth.mul(mix(float(0.82), float(1.12), strata)).mul(mix(float(0.94), float(1.04), bands))
     const rock = mix(color('#5d5a54'), color('#807a70'), strata)
     const lip = smoothstep(-0.07, -0.03, y)
-    return mix(mix(layered, color('#5d6b48'), lip.mul(0.6)), rock, smoothstep(0.02, 0.12, y))
+    const lipColor = mix(color('#5d6b48'), SNOW, mood.snowCover)
+    return mix(mix(layered, lipColor, lip.mul(0.6)), rock, smoothstep(0.02, 0.12, y))
   })()
   return material
 }
@@ -146,14 +175,17 @@ export function createFoliageMaterial(source: MeshStandardMaterial, deciduous: b
       weight = weight.add(t.a)
     }
     const leafRgb = weighted.div(weight.max(0.0001))
-    const rgb = mix(leafRgb.mul(tint), SNOW, snowMask().mul(0.7))
+    // Snow only dusts the upper side of the foliage, so woods stay readable in winter.
+    const dusting = snowMask().mul(smoothstep(0.1, 0.7, normalWorld.y)).mul(0.6)
+    const rgb = mix(leafRgb.mul(tint), SNOW, dusting)
     return vec4(rgb, smoothstep(0.08, 0.45, alpha))
   })()
 
   // Sway grows with height above the tile; phase varies per tile and across the canopy.
   material.positionNode = Fn(() => {
     const h = positionGeometry.y.max(0)
-    const phase = modelPosition.x.mul(0.7).add(modelPosition.z.mul(0.9)).add(positionGeometry.x.mul(3)).add(positionGeometry.z.mul(2))
+    // positionLocal is already instance-transformed here, so it varies per tree / per tile.
+    const phase = positionLocal.x.mul(0.7).add(positionLocal.z.mul(0.9)).add(positionGeometry.x.mul(3)).add(positionGeometry.z.mul(2))
     const sway = sin(time.mul(1.4).add(phase)).mul(0.012).add(sin(time.mul(2.3).add(phase.mul(1.7))).mul(0.005))
     return positionLocal.add(vec3(sway.mul(h), 0, sway.mul(h).mul(0.6)))
   })()
@@ -161,36 +193,82 @@ export function createFoliageMaterial(source: MeshStandardMaterial, deciduous: b
   return material
 }
 
-/** Kit rock / plaster: keep texture + vertex colour, add snow caps above the snow line. */
-export function createRockMaterial(source: MeshStandardMaterial) {
+/** Any other kit surface (rock, wood, roofs): keep texture + vertex colour, let snow settle on it. */
+export function createSnowableMaterial(source: MeshStandardMaterial) {
   const map = source.map
-  const material = new MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0, vertexColors: true })
+  const material = new MeshStandardNodeMaterial({
+    roughness: Math.max(source.roughness, 0.7),
+    metalness: 0,
+    vertexColors: true,
+  })
   material.colorNode = Fn(() => {
     const base = map ? texture(map).rgb : vec3(1)
-    return mix(base, SNOW, snowMask())
+    return mix(base.mul(color(source.color)), SNOW, snowMask())
   })()
   return material
 }
 
 /**
- * Water for custom cells: `shore` is the signed distance to the bank (negative inside).
- * Deep colour in the middle, shallow near banks, a soft animated foam line at the edge.
+ * Water for custom cells.
+ * - `depth`: water column under the vertex → colour ramp and see-through shallows.
+ * - `shore`: signed distance to the bank → animated foam line.
+ * Ripples come from an animated bump so the sun throws glints; a fresnel term mirrors the sky.
+ * With `mood.ice` it freezes into pale, cracked ice.
  */
 export function createWaterMaterial() {
-  const material = new MeshStandardNodeMaterial({ roughness: 0.06, metalness: 0, side: DoubleSide })
-  material.colorNode = Fn(() => {
-    const p = positionWorld.xz
-    const shore = attribute('shore', 'float')
-    const depth = smoothstep(-0.02, -0.38, shore)
-    const flow = mx_noise_float(vec3(p.mul(1.4), time.mul(0.16))).mul(0.5).add(0.5)
-    const ripples = mx_noise_float(vec3(p.mul(5.5), time.mul(0.45))).mul(0.5).add(0.5)
-    const body = mix(mood.waterShallow, mood.waterDeep, depth).mul(mix(float(0.92), float(1.1), flow))
-    const foamBand = smoothstep(-0.16, -0.02, shore).mul(smoothstep(0.5, 0.75, ripples.add(flow.mul(0.3))))
-    // Cheap sky reflection: streaks of the backdrop colour that drift with the ripples.
-    const sheen = smoothstep(0.35, 0.85, mx_noise_float(vec3(p.mul(0.9), time.mul(0.1))).mul(0.5).add(0.5))
-    const reflected = mix(body, mood.waterSky, float(0.08).add(sheen.mul(0.22)))
-    return mix(reflected, vec3(0.9, 0.95, 0.93), foamBand.mul(0.55)).mul(mix(float(0.97), float(1.05), ripples))
+  const material = new MeshStandardNodeMaterial({ metalness: 0, side: DoubleSide, transparent: true })
+
+  const p = positionWorld.xz
+  const ripple = Fn(() => {
+    const a = mx_noise_float(vec3(p.mul(2.2), time.mul(0.35)))
+    const b = mx_noise_float(vec3(p.mul(5.5).add(3), time.mul(0.6)))
+    return a.mul(0.7).add(b.mul(0.3)).mul(float(1).sub(mood.ice))
   })()
-  material.emissiveNode = mood.waterSky.mul(0.08)
+  material.normalNode = bumpMap(ripple, float(0.9))
+  material.roughnessNode = mix(float(0.05), float(0.35), mood.ice)
+
+  material.colorNode = Fn(() => {
+    const depth = attribute('depth', 'float')
+    const shore = attribute('shore', 'float')
+    const deepness = smoothstep(0.0, 0.11, depth)
+    const body = mix(mood.waterShallow, mood.waterDeep, deepness)
+
+    // Fresnel: grazing angles mirror the sky colour.
+    const facing = saturate(dot(normalView, positionViewDirection))
+    const fresnel = pow(float(1).sub(facing), 4).mul(0.85).add(0.08)
+    const mirrored = mix(body, mood.waterSky, fresnel)
+
+    const foamNoise = mx_noise_float(vec3(p.mul(6), time.mul(0.5))).mul(0.5).add(0.5)
+    const foam = smoothstep(-0.12, -0.015, shore).mul(smoothstep(0.42, 0.7, foamNoise.add(sin(time.mul(1.3).add(shore.mul(40))).mul(0.15))))
+    const water = mix(mirrored, vec3(0.92, 0.96, 0.95), foam.mul(0.6))
+
+    const cracks = smoothstep(0.02, 0.0, mx_worley_noise_float(p.mul(3.2)).sub(0.06).abs())
+    const ice = mix(color('#c3dbe4'), color('#7fa7ba'), deepness).mul(float(1).sub(cracks.mul(0.18)))
+    return mix(water, ice, mood.ice)
+  })()
+
+  material.opacityNode = Fn(() => {
+    const depth = attribute('depth', 'float')
+    return mix(smoothstep(0.0, 0.07, depth).mul(0.75).add(0.2), float(0.97), mood.ice)
+  })()
+
+  return material
+}
+
+/** Procedural conifers on mountain slopes: vertex-coloured, mood-tinted, snow-dusted, swaying. */
+export function createTreeMaterial() {
+  // Vertex colours are read explicitly so snow can fully replace them.
+  const material = new MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0 })
+  material.colorNode = Fn(() => {
+    const drift = mx_noise_float(positionWorld.xz.mul(0.7)).mul(0.5).add(0.5)
+    const tint = mix(vec3(0.85, 1.0, 0.92), vec3(1.05, 1.0, 0.85), drift).mul(mood.needleTint)
+    return mix(vertexColor(0).rgb.mul(tint), SNOW, snowMask().mul(smoothstep(0.2, 0.8, normalWorld.y)).mul(0.7))
+  })()
+  material.positionNode = Fn(() => {
+    const h = positionGeometry.y.max(0)
+    const phase = positionLocal.x.mul(0.9).add(positionLocal.z.mul(1.1))
+    const sway = sin(time.mul(1.3).add(phase)).mul(0.03)
+    return positionLocal.add(vec3(sway.mul(h), 0, sway.mul(h).mul(0.5)))
+  })()
   return material
 }

@@ -8,7 +8,7 @@ import { createRng, fbm, type Rng } from '../../src/shared/random'
 
 export type KitTile = 'pradera' | 'bosque' | 'caserio' | 'montana'
 export type TileKind = KitTile | 'agua'
-export type MoodId = 'dia' | 'atardecer' | 'otono' | 'noche'
+export type MoodId = 'dia' | 'atardecer' | 'otono' | 'noche' | 'invierno'
 
 export type Placement = {
   tile: TileKind
@@ -49,28 +49,34 @@ export type LandscapeSpec = {
   forest: number
   reveal: RevealMode
   mood: MoodId
+  /** Copies of the kit forest per forest cell (1..3): denser woods, same draw calls. */
+  forestCopies: number
+  /** Copies of the kit houses per village cell (1..2). */
+  villageCopies: number
 }
 
 export type Landscape = { spec: LandscapeSpec; tiles: Placement[]; water: Water }
 
 /** Hand-tuned variants shown first; afterwards variants are derived from the index. */
 export const CURATED: LandscapeSpec[] = [
-  { seed: 11, radius: 3, ragged: 0.3, rivers: [{ from: 'lake', to: 'lake', minLen: 4 }], lakes: 0, lakeSize: [1, 3], village: 3, mountains: { ranges: 1, size: 4 }, forest: 0.42, reveal: 'center', mood: 'dia' },
-  { seed: 23, radius: 3, ragged: 0.4, rivers: [{ from: 'edge', to: 'lake', minLen: 4 }, { from: 'chain', to: 'lake', minLen: 3 }, { from: 'chain', to: 'edge', minLen: 3 }], lakes: 0, lakeSize: [2, 4], village: 4, mountains: { ranges: 1, size: 3 }, forest: 0.35, reveal: 'river', mood: 'atardecer' },
-  { seed: 37, radius: 3, ragged: 0.55, rivers: [{ from: 'edge', to: 'lake', minLen: 3 }], lakes: 2, lakeSize: [2, 5], village: 2, mountains: { ranges: 1, size: 3 }, forest: 0.55, reveal: 'spiral', mood: 'otono' },
-  { seed: 41, radius: 3, ragged: 0.2, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }], lakes: 0, lakeSize: [3, 5], village: 5, mountains: { ranges: 2, size: 5 }, forest: 0.3, reveal: 'sweep', mood: 'noche' },
-  { seed: 53, radius: 4, ragged: 0.6, rivers: [{ from: 'edge', to: 'lake', minLen: 4 }, { from: 'chain', to: 'edge', minLen: 4 }], lakes: 1, lakeSize: [2, 4], village: 3, mountains: { ranges: 2, size: 4 }, forest: 0.6, reveal: 'center', mood: 'dia' },
-  { seed: 67, radius: 3, ragged: 0.3, rivers: [{ from: 'edge', to: 'edge', minLen: 6 }], lakes: 1, lakeSize: [3, 6], village: 6, mountains: { ranges: 1, size: 3 }, forest: 0.4, reveal: 'river', mood: 'atardecer' },
-  { seed: 79, radius: 3, ragged: 0.45, rivers: [{ from: 'lake', to: 'lake', minLen: 3 }, { from: 'chain', to: 'lake', minLen: 3 }], lakes: 0, lakeSize: [2, 4], village: 2, mountains: { ranges: 1, size: 6 }, forest: 0.5, reveal: 'spiral', mood: 'noche' },
-  { seed: 97, radius: 4, ragged: 0.35, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }, { from: 'edge', to: 'lake', minLen: 4 }], lakes: 1, lakeSize: [2, 5], village: 5, mountains: { ranges: 2, size: 5 }, forest: 0.45, reveal: 'sweep', mood: 'otono' },
+  { seed: 11, radius: 3, ragged: 0.3, rivers: [{ from: 'lake', to: 'lake', minLen: 4 }], lakes: 0, lakeSize: [1, 3], village: 5, mountains: { ranges: 1, size: 5 }, forest: 0.45, reveal: 'center', mood: 'dia', forestCopies: 2, villageCopies: 2 },
+  { seed: 101, radius: 4, ragged: 0.35, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }, { from: 'chain', to: 'edge', minLen: 4 }], lakes: 0, lakeSize: [2, 4], village: 7, mountains: { ranges: 2, size: 6 }, forest: 0.5, reveal: 'sweep', mood: 'invierno', forestCopies: 3, villageCopies: 2 },
+  { seed: 23, radius: 4, ragged: 0.4, rivers: [{ from: 'edge', to: 'lake', minLen: 4 }, { from: 'chain', to: 'lake', minLen: 3 }, { from: 'chain', to: 'edge', minLen: 3 }], lakes: 0, lakeSize: [2, 4], village: 10, mountains: { ranges: 1, size: 5 }, forest: 0.35, reveal: 'river', mood: 'atardecer', forestCopies: 2, villageCopies: 2 },
+  { seed: 41, radius: 4, ragged: 0.2, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }], lakes: 0, lakeSize: [3, 5], village: 12, mountains: { ranges: 2, size: 7 }, forest: 0.3, reveal: 'center', mood: 'noche', forestCopies: 2, villageCopies: 2 },
+  { seed: 37, radius: 3, ragged: 0.55, rivers: [{ from: 'edge', to: 'lake', minLen: 3 }], lakes: 2, lakeSize: [2, 5], village: 3, mountains: { ranges: 1, size: 4 }, forest: 0.65, reveal: 'spiral', mood: 'otono', forestCopies: 3, villageCopies: 1 },
+  { seed: 53, radius: 5, ragged: 0.5, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }, { from: 'chain', to: 'lake', minLen: 4 }, { from: 'chain', to: 'edge', minLen: 4 }], lakes: 1, lakeSize: [2, 5], village: 9, mountains: { ranges: 2, size: 8 }, forest: 0.45, reveal: 'center', mood: 'dia', forestCopies: 2, villageCopies: 2 },
+  { seed: 79, radius: 3, ragged: 0.45, rivers: [{ from: 'lake', to: 'lake', minLen: 3 }, { from: 'chain', to: 'lake', minLen: 3 }], lakes: 0, lakeSize: [2, 4], village: 5, mountains: { ranges: 1, size: 6 }, forest: 0.6, reveal: 'spiral', mood: 'invierno', forestCopies: 3, villageCopies: 2 },
+  { seed: 67, radius: 4, ragged: 0.3, rivers: [{ from: 'edge', to: 'edge', minLen: 7 }], lakes: 1, lakeSize: [3, 6], village: 11, mountains: { ranges: 1, size: 5 }, forest: 0.4, reveal: 'river', mood: 'atardecer', forestCopies: 2, villageCopies: 2 },
+  { seed: 97, radius: 5, ragged: 0.35, rivers: [{ from: 'edge', to: 'lake', minLen: 5 }, { from: 'edge', to: 'lake', minLen: 4 }], lakes: 1, lakeSize: [2, 5], village: 10, mountains: { ranges: 2, size: 7 }, forest: 0.5, reveal: 'sweep', mood: 'noche', forestCopies: 3, villageCopies: 2 },
+  { seed: 131, radius: 4, ragged: 0.6, rivers: [{ from: 'edge', to: 'lake', minLen: 4 }], lakes: 2, lakeSize: [2, 4], village: 6, mountains: { ranges: 2, size: 5 }, forest: 0.7, reveal: 'center', mood: 'otono', forestCopies: 3, villageCopies: 1 },
 ]
 
-const MOODS: MoodId[] = ['dia', 'atardecer', 'otono', 'noche']
+const MOODS: MoodId[] = ['dia', 'invierno', 'atardecer', 'noche', 'otono']
 
 export function specForIndex(index: number): LandscapeSpec {
   if (index < CURATED.length) return CURATED[index]
   const rng = createRng(1000 + index * 7919)
-  const radius = rng.weighted([2, 3, 4], [0.15, 0.6, 0.25])
+  const radius = rng.weighted([3, 4, 5], [0.3, 0.45, 0.25])
   const riverCount = rng.weighted([1, 2, 3], [0.45, 0.4, 0.15])
   const rivers: RiverSpec[] = Array.from({ length: riverCount }, (_, i) => ({
     from: i > 0 && rng.chance(0.6) ? 'chain' : rng.pick(['lake', 'edge'] as const),
@@ -84,11 +90,13 @@ export function specForIndex(index: number): LandscapeSpec {
     rivers,
     lakes: rng.weighted([0, 1, 2], [0.4, 0.4, 0.2]),
     lakeSize: [1 + rng.int(0, 1), 2 + rng.int(1, radius)],
-    village: rng.int(1, radius + 3),
-    mountains: { ranges: rng.int(1, 2), size: rng.int(2, radius + 3) },
+    village: rng.int(2, radius * 3),
+    mountains: { ranges: rng.int(1, 2), size: rng.int(3, radius + 4) },
     forest: 0.25 + rng() * 0.45,
     reveal: rng.pick(['center', 'spiral', 'sweep', 'river'] as const),
     mood: MOODS[index % MOODS.length],
+    forestCopies: rng.int(1, 3),
+    villageCopies: rng.int(1, 2),
   }
 }
 
@@ -182,11 +190,9 @@ export function generateLandscape(spec: LandscapeSpec): Landscape {
   for (const c of cells.values()) {
     const a = assigned.get(c.k)!
     const isWater = a.kind === 'river' || a.kind === 'lake'
+    const isCustom = isWater || a.kind === 'montana'
     let scale: [number, number, number] = [1, 1, 1]
-    if (a.kind === 'montana') {
-      const s = 0.85 + rng() * 0.3
-      scale = [s, 0.7 + rng() * 0.85, s * (0.9 + rng() * 0.2)]
-    } else if (a.kind === 'bosque') {
+    if (a.kind === 'bosque') {
       const s = 0.92 + rng() * 0.16
       scale = [s, 0.85 + rng() * 0.35, s]
     }
@@ -194,8 +200,8 @@ export function generateLandscape(spec: LandscapeSpec): Landscape {
       tile: isWater ? 'agua' : (a.kind as KitTile),
       q: c.q,
       r: c.r,
-      rot: isWater ? 0 : rng.int(0, 5),
-      mirror: isWater ? false : rng.chance(0.5),
+      rot: isCustom ? 0 : rng.int(0, 5),
+      mirror: isCustom ? false : rng.chance(0.5),
       scale,
       reveal: ranks.get(c.k)!,
     })

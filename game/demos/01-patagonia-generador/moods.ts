@@ -17,12 +17,18 @@ export type Mood = {
   leafTint: Color
   needleTint: Color
   snowLine: number
+  /** 0..1 snow blanket over everything (winter). */
+  snowCover: number
+  /** 0..1 frozen lakes and rivers. */
+  ice: number
+  caustics: number
   waterDeep: Color
   waterShallow: Color
   waterSky: Color
   saturation: number
   /** Warm light in village houses, 0..1. */
   windows: number
+  bloom: number
 }
 
 const c = (hex: string) => new Color(hex)
@@ -43,12 +49,16 @@ export const MOODS: Record<MoodId, Mood> = {
     grassTint: rgb(1, 1, 1),
     leafTint: rgb(1, 1, 1),
     needleTint: rgb(1, 1, 1),
-    snowLine: 1.55,
-    waterDeep: c('#1c4a53'),
-    waterShallow: c('#5ea296'),
-    waterSky: c('#9cc4c9'),
+    snowLine: 2.0,
+    snowCover: 0,
+    ice: 0,
+    caustics: 1,
+    waterDeep: c('#14505a'),
+    waterShallow: c('#62b2a4'),
+    waterSky: c('#b9d7dc'),
     saturation: 1.28,
     windows: 0,
+    bloom: 0.05,
   },
   atardecer: {
     bgCenter: c('#d99068'),
@@ -63,12 +73,16 @@ export const MOODS: Record<MoodId, Mood> = {
     grassTint: rgb(0.97, 1.04, 0.86),
     leafTint: rgb(1.18, 0.96, 0.72),
     needleTint: rgb(1.05, 0.95, 0.85),
-    snowLine: 1.4,
+    snowLine: 1.85,
+    snowCover: 0,
+    ice: 0,
+    caustics: 0.6,
     waterDeep: c('#1d3550'),
     waterShallow: c('#5f86a0'),
-    waterSky: c('#9fa6cc'),
+    waterSky: c('#f0b496'),
     saturation: 1.12,
-    windows: 0.45,
+    windows: 0.35,
+    bloom: 0.12,
   },
   otono: {
     bgCenter: c('#a48d63'),
@@ -83,12 +97,16 @@ export const MOODS: Record<MoodId, Mood> = {
     grassTint: rgb(1.18, 1.02, 0.72),
     leafTint: rgb(2.1, 0.78, 0.32),
     needleTint: rgb(1.02, 0.96, 0.84),
-    snowLine: 1.15,
-    waterDeep: c('#1f414a'),
-    waterShallow: c('#6f9c8a'),
-    waterSky: c('#a3b9bd'),
+    snowLine: 1.6,
+    snowCover: 0,
+    ice: 0,
+    caustics: 0.8,
+    waterDeep: c('#153d4b'),
+    waterShallow: c('#5c9aa2'),
+    waterSky: c('#a8c4c8'),
     saturation: 1.2,
     windows: 0,
+    bloom: 0.05,
   },
   noche: {
     bgCenter: c('#2b3c66'),
@@ -103,11 +121,39 @@ export const MOODS: Record<MoodId, Mood> = {
     grassTint: rgb(0.78, 0.94, 1.08),
     leafTint: rgb(0.82, 0.95, 1.12),
     needleTint: rgb(0.85, 0.95, 1.1),
-    snowLine: 1.3,
+    snowLine: 1.7,
+    snowCover: 0,
+    ice: 0,
+    caustics: 0.25,
     waterDeep: c('#0c2034'),
     waterShallow: c('#36648a'),
-    waterSky: c('#4a6496'),
+    waterSky: c('#5a76a8'),
     saturation: 0.95,
     windows: 1,
+    bloom: 0.3,
+  },
+  invierno: {
+    bgCenter: c('#eef2f5'),
+    bgEdge: c('#8794a1'),
+    sunColor: c('#fff5e8'),
+    sunIntensity: 2.7,
+    sunDir: dir(-0.5, 0.75, -0.45),
+    hemiSky: c('#e9f1f7'),
+    hemiGround: c('#8a96a3'),
+    hemiIntensity: 1.45,
+    exposure: 1.0,
+    grassTint: rgb(0.95, 1, 1.02),
+    leafTint: rgb(0.88, 0.94, 1.0),
+    needleTint: rgb(0.9, 0.97, 1.0),
+    snowLine: 0.6,
+    snowCover: 1,
+    ice: 0.85,
+    caustics: 0,
+    waterDeep: c('#4a7584'),
+    waterShallow: c('#9cc1c8'),
+    waterSky: c('#e3eef2'),
+    saturation: 1.0,
+    windows: 0.3,
+    bloom: 0.06,
   },
 }

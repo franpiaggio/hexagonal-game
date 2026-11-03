@@ -37,8 +37,24 @@ export function createField(landscape: Landscape, R: number) {
   }))
   const lakes = landscape.water.lakes.map((b) => ({ x: b.x * R, z: b.z * R, r: b.r * R }))
   const nonMountain: [number, number][] = []
+  // One peak per mountain cell, jittered and of random height: neighbouring peaks merge into ranges.
+  const peaks: { x: number; z: number; h: number; s: number }[] = []
   for (const t of landscape.tiles) {
-    if (t.tile !== 'montana') nonMountain.push(axialToWorld(t.q, t.r, R))
+    const [cx, cz] = axialToWorld(t.q, t.r, R)
+    if (t.tile !== 'montana') {
+      nonMountain.push([cx, cz])
+      continue
+    }
+    const hash = (n: number) => {
+      const v = Math.sin((t.q * 127.1 + t.r * 311.7 + seed * 0.13 + n * 74.7) * 43758.5453)
+      return v - Math.floor(v)
+    }
+    peaks.push({
+      x: cx + (hash(1) - 0.5) * R * 0.7,
+      z: cz + (hash(2) - 0.5) * R * 0.7,
+      h: 1.5 + hash(3) * 1.6,
+      s: R * (0.62 + hash(4) * 0.3),
+    })
   }
 
   function waterSdf(x: number, z: number) {
@@ -66,18 +82,31 @@ export function createField(landscape: Landscape, R: number) {
     return s
   }
 
-  function mountainHeight(x: number, z: number) {
+  function mountainMask(x: number, z: number) {
     let d = Infinity
     for (const [cx, cz] of nonMountain) {
       const dd = (cx - x) ** 2 + (cz - z) ** 2
       if (dd < d) d = dd
     }
-    d = Math.sqrt(d)
-    const m = smoothstep(0.92 * R, 1.9 * R, d)
+    return smoothstep(0.82 * R, 2.0 * R, Math.sqrt(d))
+  }
+
+  function mountainHeight(x: number, z: number) {
+    if (!peaks.length) return 0
+    const m = mountainMask(x, z)
     if (m <= 0) return 0
-    const n = fbm(x * 0.22 + 11, z * 0.22 - 5, seed + 21, 4)
-    const ridged = 1 - Math.abs(2 * fbm(x * 0.42, z * 0.42, seed + 22, 3) - 1)
-    return m * m * (0.12 + 0.7 * n + 0.55 * ridged * ridged) * 1.25
+    // Smooth max of gaussian peaks: close peaks fuse into ridges instead of standing alone.
+    let sum = 0
+    for (const p of peaks) {
+      const dd = (p.x - x) ** 2 + (p.z - z) ** 2
+      if (dd > 16 * p.s * p.s) continue
+      sum += Math.exp(((p.h * Math.exp(-dd / (2 * p.s * p.s))) - 3) * 2.2)
+    }
+    const peak = sum > 0 ? Math.log(sum) / 2.2 + 3 : 0
+    const n = fbm(x * 0.35 + 11, z * 0.35 - 5, seed + 21, 4)
+    const ridged = 1 - Math.abs(2 * fbm(x * 0.55, z * 0.55, seed + 22, 3) - 1)
+    const body = Math.max(0, peak) * (0.72 + 0.45 * ridged * ridged) + 0.18 + 0.35 * n
+    return Math.pow(m, 1.4) * body
   }
 
   function sample(x: number, z: number) {
@@ -88,7 +117,31 @@ export function createField(landscape: Landscape, R: number) {
     return { y, s, hm }
   }
 
-  return { sample, waterSdf, mountainHeight }
+  /** Conifer spots on a mountain cell: low and mid slopes, gentle enough, in noisy groves. */
+  function mountainTrees(cx: number, cz: number) {
+    const out: { x: number; z: number; y: number; s: number; r: number }[] = []
+    const hash = (n: number) => {
+      const v = Math.sin((cx * 12.9898 + cz * 78.233 + n * 37.719 + seed) * 43758.5453)
+      return v - Math.floor(v)
+    }
+    for (let i = 0; i < 70; i++) {
+      const a = hash(i * 3) * Math.PI * 2
+      const d = Math.sqrt(hash(i * 3 + 1)) * R * 0.92
+      const x = cx + Math.cos(a) * d
+      const z = cz + Math.sin(a) * d
+      const y = mountainHeight(x, z)
+      if (y < 0.05 || y > 1.25) continue
+      const e = 0.05
+      const gx = (mountainHeight(x + e, z) - mountainHeight(x - e, z)) / (2 * e)
+      const gz = (mountainHeight(x, z + e) - mountainHeight(x, z - e)) / (2 * e)
+      if (Math.hypot(gx, gz) > 1.25) continue
+      if (fbm(x * 0.9, z * 0.9, seed + 40, 2) < 0.42) continue
+      out.push({ x: x - cx, z: z - cz, y: y - 0.02, s: 0.75 + hash(i * 3 + 2) * 0.6 * (1.2 - y / 1.25), r: hash(i + 99) * Math.PI * 2 })
+    }
+    return out
+  }
+
+  return { sample, waterSdf, mountainHeight, mountainTrees }
 }
 
 /** Barycentric subdivision of a pointy-top hexagon; returns local XZ points and triangle indices. */
@@ -177,10 +230,10 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
     c.lerp(SAND, bank * 0.9)
     c.lerp(MUD, smoothstep(WATER_LEVEL + 0.01, WATER_LEVEL - 0.05, y))
     if (mount[i] > 0.02) {
-      const steep = smoothstep(0.92, 0.7, normals.getY(i))
+      const steep = smoothstep(0.86, 0.62, normals.getY(i))
       const warm = fbm((cx + x) * 0.8, (cz + z) * 0.8, 77, 2)
       const rock = ROCK.clone().lerp(ROCK_WARM, warm).lerp(SCREE, smoothstep(0.3, 0.9, fbm((cx + x) * 2.5, (cz + z) * 2.5, 78, 2)) * 0.4)
-      const rocky = Math.max(steep, smoothstep(0.25, 0.75, mount[i]))
+      const rocky = Math.max(steep, smoothstep(0.7, 1.5, mount[i]))
       c.lerp(rock, rocky)
     }
     colors.set([c.r, c.g, c.b], i * 3)
@@ -223,12 +276,15 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
     water = new BufferGeometry()
     water.setAttribute('position', new BufferAttribute(wpos, 3))
     water.setAttribute('shore', new BufferAttribute(shore, 1))
+    // Real water column under each vertex: drives colour, transparency and foam.
+    water.setAttribute('depth', new BufferAttribute(heights.map((h) => Math.max(0, WATER_LEVEL - h)), 1))
     water.setIndex(tris)
     water.computeVertexNormals()
     if (waterWallPos.length) {
       waterWalls = new BufferGeometry()
       waterWalls.setAttribute('position', new BufferAttribute(new Float32Array(waterWallPos), 3))
       waterWalls.setAttribute('shore', new BufferAttribute(new Float32Array(waterWallPos.length / 3).fill(-1), 1))
+      waterWalls.setAttribute('depth', new BufferAttribute(new Float32Array(waterWallPos.length / 3).fill(0.2), 1))
       waterWalls.setIndex(waterWallIdx)
       waterWalls.computeVertexNormals()
     }

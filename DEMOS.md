@@ -12,7 +12,7 @@ pnpm build          # dist/ con todas las demos (sitio estático)
 
 | # | Demo | Fecha | Tag | Qué prueba |
 |---|------|-------|-----|------------|
-| 01 | [Patagonia · generador](game/demos/01-patagonia-generador/README.md) | 2026-11-03 | `demo-01` | Paisajes procedurales hex con tilt-shift, agua y macizos continuos, 4 climas, animación de armado para redes. |
+| 01 | [Patagonia · generador](game/demos/01-patagonia-generador/README.md) | 2026-11-03 | `demo-01`, `demo-01.2` | Paisajes procedurales hex con tilt-shift, agua y macizos continuos, 5 climas (incl. invierno), animación de armado para redes. v2: montañas en cordón, agua realista, AO+bloom, instancing. |
 | 00 | [Hex grid base](game/demos/00-hex-grid-base/main.ts) | 2026-11-03 | — | Escena inicial del scaffold (grilla flat-top de prueba). |
 
 ## Convenciones
