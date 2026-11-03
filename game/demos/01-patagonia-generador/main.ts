@@ -283,8 +283,8 @@ const RISE_DEPTH = 3.2
 const RISE_TIME = 1.0
 const GROW_DELAY = 0.3
 const GROW_TIME = 0.75
-const EXIT_TIME = 0.55
-const EXIT_WINDOW = 0.5
+const EXIT_TIME = 0.85
+const EXIT_WINDOW = 0.9
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 const easeInOutSine = (x: number) => -(Math.cos(Math.PI * x) - 1) / 2
