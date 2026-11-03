@@ -1,13 +1,31 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hexagonal Game</title>
+    <title>Hexagonal · demos</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #f1eee8; --fg: #2b2620; --muted: #8a8275; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #1a1815; --fg: #ece6dc; --muted: #8f877a; } }
+      body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--fg); font: 16px/1.5 ui-sans-serif, system-ui, sans-serif; }
+      main { max-width: 640px; margin: 0 auto; padding: 48px 16px; }
+      h1 { font-size: 20px; font-weight: 600; margin: 0 0 24px; }
+      ol { list-style: none; padding: 0; margin: 0; }
+      li { border-top: 1px solid color-mix(in srgb, var(--muted) 35%, transparent); }
+      a { display: flex; gap: 16px; padding: 14px 0; color: inherit; text-decoration: none; }
+      a:hover .name { text-decoration: underline; }
+      .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+      .desc { color: var(--muted); font-size: 14px; }
+    </style>
   </head>
   <body>
-    <canvas id="game"></canvas>
-    <script type="module" src="/src/main.ts"></script>
+    <main>
+      <h1>Hexagonal · demos</h1>
+      <ol>
+        <li><a href="./demos/01-patagonia-generador/"><span class="num">01</span><span><span class="name">Patagonia · generador</span><br /><span class="desc">Paisajes procedurales con tilt-shift. Click para generar el siguiente.</span></span></a></li>
+        <li><a href="./demos/00-hex-grid-base/"><span class="num">00</span><span><span class="name">Hex grid base</span><br /><span class="desc">Escena inicial del scaffold.</span></span></a></li>
+      </ol>
+    </main>
   </body>
 </html>

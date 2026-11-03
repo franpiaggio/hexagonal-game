@@ -19,6 +19,7 @@ Una spec técnica lista para implementar del motor visual del juego: stack y ren
   - Estilo: tilt-shift **realista** (no low-poly de juguete).
   - Cámara: ángulo isométrico fijo, con pan, zoom y rotación en pasos de 60°.
 - Skills a consultar: `threejs-fundamentals`, `threejs-geometry`, `threejs-materials`, `threejs-shaders`, `threejs-interaction`, `threejs-animation`; `grilling` + `domain-modeling` para tickets HITL.
+- Demos visuales (experimentos para redes) viven aparte, en `game/demos/` con bitácora en `DEMOS.md`. No resuelven tickets; sirven como referencia. La demo 01 ya prueba terreno continuo con agua y macizos, tilt-shift con DoF TSL sobre WebGPU y climas.
 - Optimización desde el principio: toda decisión se evalúa contra el presupuesto de performance.
 
 ## Decisions so far

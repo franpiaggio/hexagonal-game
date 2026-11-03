@@ -1,4 +1,4 @@
-import './style.css'
+import '../../src/shared/base.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
