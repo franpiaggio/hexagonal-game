@@ -27,6 +27,7 @@ import type { KitTile, Landscape, Placement } from './generator'
 import {
   createFoliageMaterial,
   createGroundMaterial,
+  createPropMaterial,
   createSnowableMaterial,
   createSoilMaterial,
   createTreeMaterial,
@@ -34,6 +35,7 @@ import {
   mood,
 } from './materials'
 import { BASE_TOP, WATER_LEVEL, buildCustomTile, type Field } from './terrain'
+import { createPropGeometries, scatterOnField, scatterOnKit, type Spot } from './props'
 
 export const TILE_RADIUS = 2
 const BASE_HEIGHT = 1.6
@@ -157,6 +159,18 @@ export async function loadKit(baseUrl: string) {
   baseGeometry.translate(0, BASE_TOP - BASE_HEIGHT / 2, 0)
   const conifer = createConiferGeometry()
 
+  // Ground clutter spots per kit tile, found once by raycasting the tile's own meshes.
+  const propGeometry = createPropGeometries()
+  const propMaterial = createPropMaterial()
+  const KIT_PROPS: Partial<Record<KitTile, number>> = { pradera: 150, caserio: 110, bosque: 30 }
+  const kitSpots = new Map<KitTile, Spot[]>()
+  for (const [id, count] of Object.entries(KIT_PROPS) as [KitTile, number][]) {
+    const solid = parts.get(id)!.filter((p) => !(p.material.alphaTest > 0 || p.material.transparent))
+    const meshes = solid.map((p) => new Mesh(p.geometry))
+    const groundMeshes = new Set(meshes.filter((_, j) => solid[j].material === ground))
+    kitSpots.set(id, scatterOnKit(meshes, groundMeshes, TILE_RADIUS, count, KIT.indexOf(id) + 1))
+  }
+
   function buildBoard(landscape: Landscape, field: Field): Board {
     const group = new Group()
     const owned: BufferGeometry[] = []
@@ -173,6 +187,21 @@ export async function loadKit(baseUrl: string) {
     const hash = (q: number, r: number, n: number) => {
       const v = Math.sin((q * 127.1 + r * 311.7 + n * 74.7 + landscape.spec.seed) * 43758.5453)
       return v - Math.floor(v)
+    }
+
+    const rot = new Quaternion()
+    const addProps = (i: number, placement: Placement, spots: Spot[], turn: number) => {
+      const around = new Matrix4().makeRotationY(turn)
+      spots.forEach((sp, j) => {
+        // Each cell keeps its own subset so neighbouring meadows don't repeat.
+        if (hash(placement.q, placement.r, 20 + j) < 0.2) return
+        const local = new Matrix4().compose(
+          new Vector3(sp.x, sp.y, sp.z),
+          rot.setFromAxisAngle(Y_AXIS, sp.r),
+          new Vector3(sp.s, sp.s, sp.s),
+        )
+        add(`prop:${sp.kind}`, propGeometry[sp.kind], propMaterial, { tile: i, pre: around.clone().multiply(local), prop: [1, 1, 1] }, false)
+      })
     }
 
     const tiles: TileState[] = landscape.tiles.map((placement, i) => {
@@ -204,6 +233,7 @@ export async function loadKit(baseUrl: string) {
         }
         group.add(root)
         state.root = root
+        addProps(i, placement, scatterOnField(field, x, z, TILE_RADIUS, isMountain, landscape.spec.seed), 0)
 
         if (isMountain) {
           for (const t of field.mountainTrees(x, z)) {
@@ -256,6 +286,8 @@ export async function loadKit(baseUrl: string) {
           })
         })
       }
+      const spots = kitSpots.get(tile)
+      if (spots) addProps(i, placement, spots, (placement.rot * Math.PI) / 3)
       if (tile === 'caserio') state.light = new Vector3(0, 0.32, 0)
       return state
     })

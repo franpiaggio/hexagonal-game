@@ -6,6 +6,7 @@ import { Color, DoubleSide, MeshStandardMaterial, Texture } from 'three'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
 import {
   Fn,
+  If,
   attribute,
   bumpMap,
   color,
@@ -93,9 +94,10 @@ export function createGroundMaterial(waterLevel: number) {
     const tint = mix(lush, dry, smoothstep(0.32, 0.78, patches)).mul(mood.grassTint)
     const grassTint = mix(vec3(1), tint, grassy)
 
-    const lum = mix(float(0.88), float(1.08), mottling)
-      .mul(mix(float(0.95), float(1.04), grain))
-      .mul(mix(float(0.96), float(1.04), speckle))
+    // Stronger mottling + fine grain: at miniature scale the meadow should read as textured turf.
+    const lum = mix(float(0.82), float(1.1), mottling)
+      .mul(mix(float(0.9), float(1.07), grain))
+      .mul(mix(float(0.92), float(1.06), speckle))
 
     const top = saturation(base.mul(grassTint).mul(lum), mix(float(1.0), mood.saturation, grassy))
 
@@ -108,12 +110,16 @@ export function createGroundMaterial(waterLevel: number) {
 
     // Lake bed: darker with depth, with caustic light lines dancing on it.
     const depth = saturate(float(waterLevel).sub(y).mul(9))
-    const cells = mx_worley_noise_float(vec3(p.mul(2.6), time.mul(0.15)))
-    const cells2 = mx_worley_noise_float(vec3(p.mul(3.4).add(7), time.mul(0.12)))
-    const caustic = pow(saturate(float(1).sub(cells.min(cells2).mul(2.2))), 3).mul(mood.caustics).mul(float(1).sub(mood.ice))
+    const underwater = smoothstep(waterLevel + 0.004, waterLevel - 0.012, y).mul(smoothstep(0.3, 0.6, normalWorld.y))
+    // Worley noise is the priciest thing in the shader: only pay for it on the lake bed.
+    const caustic = float(0).toVar()
+    If(underwater.greaterThan(0.001), () => {
+      const cells = mx_worley_noise_float(vec3(p.mul(2.6), time.mul(0.15)))
+      const cells2 = mx_worley_noise_float(vec3(p.mul(3.4).add(7), time.mul(0.12)))
+      caustic.assign(pow(saturate(float(1).sub(cells.min(cells2).mul(2.2))), 3).mul(mood.caustics).mul(float(1).sub(mood.ice)))
+    })
     const bed = surface.mul(mix(float(1), float(0.55), depth)).add(caustic.mul(0.45).mul(depth.mul(1.4).min(1)))
     const wet = surface.mul(0.82)
-    const underwater = smoothstep(waterLevel + 0.004, waterLevel - 0.012, y).mul(smoothstep(0.3, 0.6, normalWorld.y))
     const atShore = smoothstep(waterLevel + 0.03, waterLevel + 0.004, y)
     const grounded = mix(mix(surface, wet, atShore), bed, underwater)
 
@@ -285,6 +291,26 @@ export function createWaterMaterial() {
     return mix(smoothstep(0.0, 0.07, depth).mul(0.75).add(0.2), float(0.97), mood.ice)
   })()
 
+  return material
+}
+
+/** Ground clutter (tufts, flowers, pebbles, reeds): vertex colour, meadow tint, snow, breeze. */
+export function createPropMaterial() {
+  const material = new MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0, side: DoubleSide })
+  material.colorNode = Fn(() => {
+    const base = vertexColor(0).rgb
+    const grassy = smoothstep(0.0, 0.08, base.g.sub(base.r))
+    const drift = mx_noise_float(positionWorld.xz.mul(0.6)).mul(0.5).add(0.5)
+    const tint = mix(vec3(0.85, 1.04, 0.9), vec3(1.12, 1.03, 0.8), drift).mul(mood.grassTint)
+    const tinted = base.mul(mix(vec3(1), tint, grassy))
+    return mix(tinted, SNOW, mood.snowCover.mul(0.85).max(snowMask().mul(0.8)))
+  })()
+  material.positionNode = Fn(() => {
+    const h = positionGeometry.y.max(0)
+    const phase = positionLocal.x.mul(1.3).add(positionLocal.z.mul(0.8))
+    const sway = sin(time.mul(1.6).add(phase)).mul(0.12)
+    return positionLocal.add(vec3(sway.mul(h), 0, sway.mul(h).mul(0.6)))
+  })()
   return material
 }
 

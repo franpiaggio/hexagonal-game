@@ -47,11 +47,17 @@ import { loadKit, type Board } from './tiles'
 // --- Renderer -------------------------------------------------------------------------
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!
-const renderer = new WebGPURenderer({ canvas, antialias: true })
+// A stalled GPU process can leave requestAdapter() pending forever (seen in Chrome under memory
+// pressure): give WebGPU a few seconds, then start on the WebGL2 backend instead of a black page.
+const webgpuReady = await Promise.race([
+  navigator.gpu?.requestAdapter().then((a) => !!a, () => false) ?? Promise.resolve(false),
+  new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
+])
+const renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: !webgpuReady })
 // The post stack (AO + DoF + bloom) is fill-bound: 1.5× by default, full 2× with ?hq for recordings.
 const HQ = new URLSearchParams(window.location.search).has('hq')
 /** Camera framing: < 1 is closer (crops the board edges), 1 fits the whole board. `?zoom=0.9` overrides. */
-const ZOOM = Number(new URLSearchParams(window.location.search).get('zoom')) || 0.74
+const ZOOM = Number(new URLSearchParams(window.location.search).get('zoom')) || 0.64
 /** Full-bleed: the landscape runs past every screen edge. `?full` or the F key. */
 let fullBleed = new URLSearchParams(window.location.search).has('full')
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, HQ ? 2 : 1.5))
@@ -159,6 +165,8 @@ const camera = new PerspectiveCamera(22, window.innerWidth / window.innerHeight,
 const ELEVATION = (40 * Math.PI) / 180
 const AZIMUTH = (42 * Math.PI) / 180
 const target = new Vector3(0, 0.3, 0)
+/** Where the camera aims for the live landscape: nudged towards the village. */
+const targetGoal = new Vector3(0, 0.3, 0)
 let distance = 60
 let distanceGoal = 60
 /** Point of interest the lens focuses on (the village, if any). */
@@ -183,11 +191,11 @@ function distanceInside(cells: number, R: number) {
   const fits = (d: number) => {
     for (const az of [AZIMUTH - 0.08, AZIMUTH + 0.08]) {
       probe.position.set(
-        target.x + Math.cos(ELEVATION) * Math.cos(az) * d,
-        target.y + Math.sin(ELEVATION) * d,
-        target.z + Math.cos(ELEVATION) * Math.sin(az) * d,
+        targetGoal.x + Math.cos(ELEVATION) * Math.cos(az) * d,
+        targetGoal.y + Math.sin(ELEVATION) * d,
+        targetGoal.z + Math.cos(ELEVATION) * Math.sin(az) * d,
       )
-      probe.lookAt(target)
+      probe.lookAt(targetGoal)
       probe.updateMatrixWorld()
       for (const [nx, ny] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
         ray.set(nx, ny, 0.5).unproject(probe).sub(probe.position).normalize()
@@ -242,6 +250,7 @@ const vignette = smoothstep(0.38, 1.0, length(screenUV.sub(0.5).mul(vec2(1.2, 1.
 // hash() takes a scalar: fold both screen axes and time into one seed (a vec2 would only use x → stripes).
 const grain = hash(screenUV.x.mul(1913.7).add(screenUV.y.mul(7919.3)).add(time.mul(13.17))).sub(0.5).mul(0.016)
 pipeline.outputNode = vec4(graded.mul(mix(float(1), float(0.82), vignette)).add(vec3(grain)), 1)
+if (import.meta.env.DEV) Object.assign(window, { __post: { pipeline, sceneColor, occluded, blurred, hdr, aoPass, renderOutput } })
 
 // --- Landscapes --------------------------------------------------------------------------
 
@@ -283,20 +292,23 @@ function showLandscape(i: number) {
   scene.add(board.group)
 
   const radius = boardRadiusOf(board)
-  const full = fullBleed
-  frame = () => (full ? distanceInside(composed.spec.radius + PAD + 0.3, 2) : distanceFor(radius))
-  distanceGoal = frame()
-  fitShadow(radius)
-  focalLength.value = radius * 0.55
+  // Lens depth follows the composed landscape, not the full-bleed filler around it.
+  const storyRadius = boardRadiusOf({ ...board, tiles: board.tiles.slice(0, composed.tiles.length) })
   targetMood = MOODS[landscape.spec.mood]
 
   // Focus on the village (the story of the shot); fall back to the board centre.
   const village = board.tiles.filter((t) => t.placement.tile === 'caserio')
-  focusGoal.set(0, 0.2, 0)
-  if (village.length) {
-    for (const t of village) focusGoal.add(new Vector3(t.x, 0, t.z).divideScalar(village.length))
-    focusGoal.multiplyScalar(0.7)
-  }
+  const centroid = new Vector3()
+  for (const t of village) centroid.add(new Vector3(t.x, 0, t.z).divideScalar(village.length))
+  focusGoal.copy(centroid).multiplyScalar(0.85).setY(0.2)
+  // The camera leans towards the houses too, without losing the rest of the board.
+  targetGoal.copy(centroid).multiplyScalar(0.45).setY(0.3)
+
+  const full = fullBleed
+  frame = () => (full ? distanceInside(composed.spec.radius + PAD + 0.3, 2) : distanceFor(radius + targetGoal.length() * 0.5))
+  distanceGoal = frame()
+  fitShadow(radius + targetGoal.length())
+  focalLength.value = storyRadius * 0.48
 
   lastChange = now()
   const busy = shows.some((s) => s.exitStart !== null)
@@ -421,6 +433,7 @@ showLandscape(index)
 current = cloneMood(targetMood)
 distance = distanceGoal * 1.15
 focus.copy(focusGoal)
+target.copy(targetGoal)
 const forward = new Vector3()
 
 renderer.setAnimationLoop(() => {
@@ -433,6 +446,7 @@ renderer.setAnimationLoop(() => {
   blendMood(dt)
   distance += (distanceGoal - distance) * (1 - Math.exp(-dt * 1.5))
   focus.lerp(focusGoal, 1 - Math.exp(-dt * 1.2))
+  target.lerp(targetGoal, 1 - Math.exp(-dt * 1.2))
   const az = AZIMUTH + Math.sin(t * 0.06) * 0.07
   camera.position.set(
     target.x + Math.cos(ELEVATION) * Math.cos(az) * distance,
