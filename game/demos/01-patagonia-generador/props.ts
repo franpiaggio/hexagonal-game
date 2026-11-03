@@ -2,7 +2,7 @@
 // Tiny, cheap instanced geometry (a few dozen triangles each, no shadow casting) that gives the
 // lens something crisp to resolve where it focuses, which is what sells the tilt-shift miniature.
 
-import { BufferAttribute, BufferGeometry, ConeGeometry, Color, IcosahedronGeometry, Mesh, Raycaster, Vector3 } from 'three'
+import { BufferAttribute, BufferGeometry, ConeGeometry, Color, IcosahedronGeometry, Mesh, Raycaster, SphereGeometry, Vector3 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { fbm } from '../../src/shared/random'
 import type { Field } from './terrain'
@@ -61,26 +61,70 @@ function flowers(kind: 'lupin' | 'daisy') {
   return mergeGeometries(parts.map((p) => p.toNonIndexed()))!
 }
 
-/** Neneo-style cushion shrub: a lumpy low dome, mottled olive. */
-function shrub() {
-  const g = new IcosahedronGeometry(0.08, 1).toNonIndexed()
-  const pos = g.getAttribute('position')
-  const colors = new Float32Array(pos.count * 3)
-  const dark = new Color('#4f5f2e')
-  const light = new Color('#8f9046')
+/**
+ * Soft rounded cluster of lumps (smooth-shaded spheres, gently displaced): reads as a cushion of
+ * grass or a neneo bush at miniature scale, with no spikes or facets. Colour runs from a dark,
+ * shadowed base to a sunlit top, which also fakes contact occlusion with the ground.
+ */
+function cushion(lumps: { x: number; z: number; r: number; h: number }[], dark: Color, light: Color, seed: number) {
+  const parts: BufferGeometry[] = []
+  const top = Math.max(...lumps.map((l) => l.h))
   const c = new Color()
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i)
-    const y = pos.getY(i)
-    const z = pos.getZ(i)
-    const bump = 1 + 0.18 * Math.sin(x * 61 + z * 37) * Math.cos(y * 53 - x * 29)
-    pos.setXYZ(i, x * bump, Math.max(y, -0.01) * 0.6 * bump, z * bump)
-    c.copy(dark).lerp(light, Math.min(1, Math.max(0, 0.5 + y * 6 + 0.25 * Math.sin(i * 1.7))))
-    colors.set([c.r, c.g, c.b], i * 3)
-  }
-  g.setAttribute('color', new BufferAttribute(colors, 3))
-  g.deleteAttribute('uv')
-  return g
+  lumps.forEach((l, k) => {
+    const g = new SphereGeometry(l.r, 12, 8)
+    const pos = g.getAttribute('position')
+    const colors = new Float32Array(pos.count * 3)
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i)
+      const y = pos.getY(i)
+      const z = pos.getZ(i)
+      // Low-frequency bumps only: lumpy silhouette, still smooth.
+      const bump = 1 + 0.1 * Math.sin(x * 70 + seed + k) * Math.cos(z * 63 - y * 41 + seed)
+      const wy = Math.max(-0.2 * l.r, y) * (l.h / l.r)
+      pos.setXYZ(i, l.x + x * bump, wy * bump + l.h * 0.15, l.z + z * bump)
+      const t = Math.min(1, Math.max(0, (wy + l.h * 0.15) / (top * 1.1)))
+      c.copy(dark).lerp(light, t * t * (3 - 2 * t))
+      // A touch of per-vertex variation so clusters aren't flat-coloured.
+      c.multiplyScalar(0.94 + 0.12 * (0.5 + 0.5 * Math.sin(i * 12.9898 + seed * 7.1)))
+      colors.set([c.r, c.g, c.b], i * 3)
+    }
+    g.setAttribute('color', new BufferAttribute(colors, 3))
+    g.deleteAttribute('uv')
+    g.computeVertexNormals()
+    parts.push(g)
+  })
+  return mergeGeometries(parts)!
+}
+
+/** Low grass cushion (replaces spiky blade clumps). */
+function grassCushion() {
+  return cushion(
+    [
+      { x: 0, z: 0, r: 0.034, h: 0.03 },
+      { x: 0.03, z: 0.012, r: 0.024, h: 0.022 },
+      { x: -0.022, z: 0.022, r: 0.022, h: 0.02 },
+      { x: 0.006, z: -0.028, r: 0.02, h: 0.018 },
+    ],
+    new Color('#3f5a2a'),
+    new Color('#8fa257'),
+    1.7,
+  )
+}
+
+/** Neneo-style bush: a rounder, taller cluster in muted olive. */
+function shrub() {
+  return cushion(
+    [
+      { x: 0, z: 0, r: 0.06, h: 0.055 },
+      { x: 0.05, z: 0.02, r: 0.045, h: 0.042 },
+      { x: -0.045, z: 0.03, r: 0.042, h: 0.04 },
+      { x: 0.01, z: -0.05, r: 0.04, h: 0.036 },
+      { x: -0.03, z: -0.03, r: 0.035, h: 0.03 },
+    ],
+    new Color('#34472a'),
+    new Color('#7d8a4c'),
+    4.2,
+  )
 }
 
 function pebbles() {
@@ -88,25 +132,34 @@ function pebbles() {
   const tones = [new Color('#8d8a80'), new Color('#a29d90'), new Color('#76736b')]
   for (let i = 0; i < 3; i++) {
     const s = 0.035 - i * 0.008
-    const rock = new IcosahedronGeometry(s, 0).scale(1, 0.55, 0.85).translate(i * 0.04 - 0.03, s * 0.25, (i % 2) * 0.035)
+    // Smooth, slightly irregular river stones (rounded, not faceted).
+    const rock = new SphereGeometry(s, 10, 7).scale(1, 0.5, 0.8)
+    const pos = rock.getAttribute('position')
+    for (let v = 0; v < pos.count; v++) {
+      const k = 1 + 0.08 * Math.sin(pos.getX(v) * 160 + i) * Math.cos(pos.getZ(v) * 140 - i)
+      pos.setXYZ(v, pos.getX(v) * k, pos.getY(v) * k, pos.getZ(v) * k)
+    }
+    rock.translate(i * 0.04 - 0.03, s * 0.2, (i % 2) * 0.035)
+    rock.computeVertexNormals()
     parts.push(paint(rock, tones[i]))
   }
   return mergeGeometries(parts)!
 }
 
 export function createPropGeometries(): Record<PropKind, BufferGeometry> {
-  const finish = (g: BufferGeometry) => {
-    const flat = g.index ? g.toNonIndexed() : g
-    flat.computeVertexNormals()
-    return flat
+  // Thin parts (stems, reeds) stay flat-shaded; rounded parts keep their smooth normals.
+  const flat = (g: BufferGeometry) => {
+    const out = g.index ? g.toNonIndexed() : g
+    out.computeVertexNormals()
+    return out
   }
   return {
-    tuft: finish(clump(9, 0.1, 0.03, new Color('#4f6c30'), new Color('#93a04e'), 0.7)),
-    shrub: finish(shrub()),
-    lupin: finish(flowers('lupin')),
-    daisy: finish(flowers('daisy')),
-    pebble: finish(pebbles()),
-    reed: finish(clump(6, 0.16, 0.012, new Color('#5a6b3b'), new Color('#8b8350'), 2.1)),
+    tuft: grassCushion(),
+    shrub: shrub(),
+    lupin: flat(flowers('lupin')),
+    daisy: flat(flowers('daisy')),
+    pebble: pebbles(),
+    reed: flat(clump(6, 0.15, 0.01, new Color('#5a6b3b'), new Color('#8b8350'), 2.1)),
   }
 }
 

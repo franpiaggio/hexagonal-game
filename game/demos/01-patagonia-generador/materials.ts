@@ -11,6 +11,7 @@ import {
   bumpMap,
   color,
   dot,
+  fwidth,
   float,
   max,
   mix,
@@ -81,7 +82,20 @@ export function createGroundMaterial(waterLevel: number) {
     const p = positionWorld.xz
     const base = vertexColor(0).rgb
 
-    const patches = mx_fractal_noise_float(p.mul(0.11), 3, 2.0, 0.5).mul(0.5).add(0.5)
+    // Domain warp (shader-bible 04): patch edges bend into organic shapes instead of following
+    // the noise lattice, so dry and lush grass meander like real pasture.
+    const warp = vec2(mx_noise_float(p.mul(0.35)), mx_noise_float(p.mul(0.35).add(vec2(5.2, 1.3))))
+    const patches = mx_fractal_noise_float(p.mul(0.11).add(warp.mul(0.7)), 3, 2.0, 0.5).mul(0.5).add(0.5)
+    // Turf: anisotropic fine noise, stretched along a slowly turning direction, reads as grass
+    // combed by the wind at miniature scale (sharp where the lens focuses, blurred elsewhere).
+    const angle = warp.x.mul(1.6)
+    const ca = angle.cos()
+    const sa = angle.sin()
+    const along = p.x.mul(ca).add(p.y.mul(sa))
+    const across = p.y.mul(ca).sub(p.x.mul(sa))
+    const turf = mx_noise_float(vec2(across.mul(58), along.mul(13))).mul(0.5).add(0.5)
+    // Clumps: small soft tufts of denser, darker grass scattered through the meadow.
+    const clumps = smoothstep(0.58, 0.82, mx_noise_float(p.mul(5.5).add(warp.mul(2.0))).mul(0.5).add(0.5))
     // 3D noise: on steep rock a top-down (xz) pattern would smear into vertical streaks.
     const q = positionWorld
     const mottling = mx_noise_float(q.mul(0.9)).mul(0.5).add(0.5)
@@ -101,7 +115,10 @@ export function createGroundMaterial(waterLevel: number) {
       .mul(mix(float(0.9), float(1.07), grain))
       .mul(mix(float(0.92), float(1.06), speckle))
 
-    const top = saturation(base.mul(grassTint).mul(lum), mix(float(1.0), mood.saturation, grassy))
+    // Turf and clumps only on open, upward-facing grass.
+    const meadow = grassy.mul(smoothstep(0.75, 0.95, normalWorld.y))
+    const sward = mix(float(1), mix(float(0.9), float(1.08), turf).mul(mix(float(1), float(0.84), clumps)), meadow)
+    const top = saturation(base.mul(grassTint).mul(lum).mul(sward), mix(float(1.0), mood.saturation, grassy))
 
     // Kit tiles: soil cut on their thin vertical faces.
     // Geometry space, not instance space: rising or sinking tiles must not read as "underwater".
@@ -168,14 +185,11 @@ export function createFoliageMaterial(source: MeshStandardMaterial, deciduous: b
     const tint = mix(vec3(0.82, 1.0, 0.92), vec3(1.08, 1.02, 0.8), smoothstep(0.3, 0.75, drift)).mul(moodTint)
     // The needle sprigs are a few texels wide: at miniature distance their alpha collapses
     // below the cutoff. Dilate the alpha with a small cross of taps and alpha-weight the colour.
-    const o = float(deciduous ? 0.004 : 0.009)
-    const taps = [
-      texture(map, uv()),
-      texture(map, uv().add(vec2(o, 0))),
-      texture(map, uv().sub(vec2(o, 0))),
-      texture(map, uv().add(vec2(0, o))),
-      texture(map, uv().sub(vec2(0, o))),
-    ]
+    // Deciduous leaves are wide enough not to need dilation (it only fattens cards into squares).
+    const o = float(deciduous ? 0 : 0.009)
+    // Sample a sharper mip: far away, averaged alpha turns every leaf card into an opaque square.
+    const tap = (dx: number, dy: number) => texture(map, uv().add(vec2(o.mul(dx), o.mul(dy)))).bias(float(-1.5))
+    const taps = [tap(0, 0), tap(1, 0), tap(-1, 0), tap(0, 1), tap(0, -1)]
     let alpha = taps[0].a
     let weighted = taps[0].rgb.mul(taps[0].a)
     let weight = taps[0].a
@@ -188,7 +202,11 @@ export function createFoliageMaterial(source: MeshStandardMaterial, deciduous: b
     // Snow only dusts the upper side of the foliage, so woods stay readable in winter.
     const dusting = snowMask().mul(smoothstep(0.1, 0.7, normalWorld.y)).mul(0.6)
     const rgb = mix(leafRgb.mul(tint), SNOW, dusting)
-    return vec4(rgb, smoothstep(0.08, 0.45, alpha))
+    // Alpha-to-coverage sharpening (Golus): a crisp, antialiased leaf edge at any distance,
+    // instead of a soft threshold that bloats into the card's rectangle.
+    const cut = deciduous ? 0.5 : 0.3
+    const sharp = saturate(alpha.sub(cut).div(fwidth(alpha).max(0.0001)).add(0.5))
+    return vec4(rgb, sharp)
   })()
 
   // Sway grows with height above the tile; phase varies per tile and across the canopy.
