@@ -4,18 +4,24 @@
 import { BufferAttribute, BufferGeometry } from 'three'
 import { axialToWorld } from '../../src/shared/hex'
 import type { Landscape } from './generator'
+import type { Quality } from './quality'
 import type { CellJob, CellRequest, CellResult, PackedGeometry } from './terrain-worker'
 
-const SIZE = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1))
-const workers = Array.from({ length: SIZE }, () => new Worker(new URL('./terrain-worker.ts', import.meta.url), { type: 'module' }))
+const workers: Worker[] = []
 const pending = new Map<number, (cells: CellResult[]) => void>()
-for (const w of workers) {
-  w.onmessage = (e: MessageEvent<{ id: number; cells: CellResult[] }>) => {
-    pending.get(e.data.id)?.(e.data.cells)
-    pending.delete(e.data.id)
+let nextId = 0
+
+/** Spawns the pool (sized by the quality tier: phones get fewer threads). */
+export function startTerrainWorkers(count: number) {
+  while (workers.length < count) {
+    const w = new Worker(new URL('./terrain-worker.ts', import.meta.url), { type: 'module' })
+    w.onmessage = (e: MessageEvent<{ id: number; cells: CellResult[] }>) => {
+      pending.get(e.data.id)?.(e.data.cells)
+      pending.delete(e.data.id)
+    }
+    workers.push(w)
   }
 }
-let nextId = 0
 
 export function unpack(packed: PackedGeometry) {
   const geometry = new BufferGeometry()
@@ -25,7 +31,9 @@ export function unpack(packed: PackedGeometry) {
 }
 
 /** Builds every water and mountain cell of a landscape in parallel; resolves by tile index. */
-export async function buildCustomCells(landscape: Landscape, radius: number) {
+export async function buildCustomCells(landscape: Landscape, radius: number, quality: Quality) {
+  if (!workers.length) startTerrainWorkers(1)
+  const detail = { mountain: quality.mountainDetail, water: quality.waterDetail, props: quality.props }
   const jobs: (CellJob & { w: number })[] = []
   landscape.tiles.forEach((t, i) => {
     if (t.tile !== 'agua' && t.tile !== 'montana') return
@@ -45,7 +53,7 @@ export async function buildCustomCells(landscape: Landscape, radius: number) {
       const id = nextId++
       return new Promise<CellResult[]>((resolve) => {
         pending.set(id, resolve)
-        const request: CellRequest = { id, landscape, radius, jobs: lot }
+        const request: CellRequest = { id, landscape, radius, jobs: lot, detail }
         workers[k].postMessage(request)
       })
     }),

@@ -40,7 +40,8 @@ import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js'
 import { generateLandscape, specForIndex } from './generator'
 import { mood as moodUniforms } from './materials'
 import { MOODS, type Mood } from './moods'
-import { buildCustomCells } from './terrain-pool'
+import { buildCustomCells, startTerrainWorkers } from './terrain-pool'
+import { createGovernor, pickQuality } from './quality'
 import { padLandscape } from './fullscreen'
 import { TILE_RADIUS, loadKit, type Board } from './tiles'
 
@@ -53,14 +54,16 @@ const webgpuReady = await Promise.race([
   navigator.gpu?.requestAdapter().then((a) => !!a, () => false) ?? Promise.resolve(false),
   new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
 ])
-const renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: !webgpuReady })
-// The post stack (AO + DoF + bloom) is fill-bound: 1.5× by default, full 2× with ?hq for recordings.
+// The post stack (AO + DoF + bloom) is fill-bound: the tier caps the resolution (2× with ?hq
+// for recordings) and a governor lowers it at runtime if frames run late. `?quality=low|medium|high`.
 const HQ = new URLSearchParams(window.location.search).has('hq')
+const quality = pickQuality(webgpuReady, HQ)
+const renderer = new WebGPURenderer({ canvas, antialias: quality.antialias, forceWebGL: !webgpuReady })
 /** Camera framing: < 1 is closer (crops the board edges), 1 fits the whole board. `?zoom=0.9` overrides. */
 const ZOOM = Number(new URLSearchParams(window.location.search).get('zoom')) || 0.64
 /** Full-bleed: the landscape runs past every screen edge. `?full` or the F key. */
 let fullBleed = new URLSearchParams(window.location.search).has('full')
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, HQ ? 2 : 1.5))
+renderer.setPixelRatio(quality.maxDpr)
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.toneMapping = AgXToneMapping
 renderer.shadowMap.enabled = true
@@ -84,7 +87,7 @@ scene.add(hemi)
 
 const sun = new DirectionalLight('#fff1dc', 3.3)
 sun.castShadow = true
-sun.shadow.mapSize.set(4096, 4096)
+sun.shadow.mapSize.set(quality.shadowMap, quality.shadowMap)
 sun.shadow.bias = -0.0004
 sun.shadow.normalBias = 0.03
 sun.shadow.radius = 2
@@ -106,7 +109,7 @@ function fitShadow(boardRadius: number) {
 }
 
 // Fixed pool of warm window lights: changing the light count would recompile every material.
-const WINDOW_LIGHTS = Array.from({ length: 10 }, () => {
+const WINDOW_LIGHTS = Array.from({ length: quality.windowLights }, () => {
   const light = new PointLight('#ffb36b', 0, 2.6, 2)
   scene.add(light)
   return light
@@ -236,16 +239,21 @@ const bokehScale = uniform(3.6)
 const pipeline = new RenderPipeline(renderer)
 pipeline.outputColorTransform = false
 const scenePass = pass(scene, camera)
-scenePass.setMRT(mrt({ output, normal: packNormalToRGB(normalView) }))
 const sceneColor = scenePass.getTextureNode('output')
-const normalTexture = scenePass.getTextureNode('normal')
-const sceneNormal = sample((uv) => unpackRGBToNormal(normalTexture.sample(uv)))
-const aoPass = ao(scenePass.getTextureNode('depth'), sceneNormal, camera)
-aoPass.resolutionScale = 0.5
-aoPass.radius.value = 0.35
-aoPass.thickness.value = 0.6
-const occlusion = nodeObject(aoPass).getTextureNode().r
-const occluded = vec4(sceneColor.rgb.mul(mix(float(1), occlusion, 0.75)), sceneColor.a)
+// AO needs a second (normal) render target on the scene pass; low tiers skip both.
+let aoPass: ReturnType<typeof ao> | null = null
+let occluded = vec4(sceneColor.rgb, sceneColor.a)
+if (quality.ao > 0) {
+  scenePass.setMRT(mrt({ output, normal: packNormalToRGB(normalView) }))
+  const normalTexture = scenePass.getTextureNode('normal')
+  const sceneNormal = sample((uv) => unpackRGBToNormal(normalTexture.sample(uv)))
+  aoPass = ao(scenePass.getTextureNode('depth'), sceneNormal, camera)
+  aoPass.resolutionScale = quality.ao
+  aoPass.radius.value = 0.35
+  aoPass.thickness.value = 0.6
+  const occlusion = nodeObject(aoPass).getTextureNode().r
+  occluded = vec4(sceneColor.rgb.mul(mix(float(1), occlusion, 0.75)), sceneColor.a)
+}
 // DepthOfFieldNode typings lag the runtime: wrap it so it composes like any vec4 node.
 const blurred = nodeObject(dof(occluded, scenePass.getViewZNode(), focusDistance, focalLength, bokehScale)) as unknown as ReturnType<typeof vec4>
 const glow = nodeObject(bloom(blurred, 1, 0.55, 0.82)) as unknown as ReturnType<typeof vec4>
@@ -258,11 +266,12 @@ const vignette = smoothstep(0.38, 1.0, length(screenUV.sub(0.5).mul(vec2(1.2, 1.
 // hash() takes a scalar: fold both screen axes and time into one seed (a vec2 would only use x → stripes).
 const grain = hash(screenUV.x.mul(1913.7).add(screenUV.y.mul(7919.3)).add(time.mul(13.17))).sub(0.5).mul(0.016)
 pipeline.outputNode = vec4(graded.mul(mix(float(1), float(0.82), vignette)).add(vec3(grain)), 1)
-if (import.meta.env.DEV) Object.assign(window, { __post: { pipeline, sceneColor, occluded, blurred, hdr, aoPass, renderOutput, focusDistance, focalLength, camera, scene, sun } })
+if (import.meta.env.DEV) Object.assign(window, { __post: { pipeline, sceneColor, occluded, blurred, hdr, aoPass, renderOutput, focusDistance, focalLength, camera, scene, sun, quality, governor: () => governor } })
 
 // --- Landscapes --------------------------------------------------------------------------
 
-const kit = await loadKit(new URL('../../assets/patagonia/', window.location.href).href)
+startTerrainWorkers(quality.workers)
+const kit = await loadKit(new URL('../../assets/patagonia/', window.location.href).href, quality)
 
 type Show = {
   board: Board
@@ -311,7 +320,7 @@ async function showLandscape(i: number) {
   const PAD = 3
   const landscape = fullBleed ? padLandscape(composed, PAD) : composed
   // Terrain cells build in workers while the old board sinks; a newer click supersedes this one.
-  const cells = await buildCustomCells(landscape, TILE_RADIUS)
+  const cells = await buildCustomCells(landscape, TILE_RADIUS, quality)
   if (token !== buildToken) return
   const board = kit.buildBoard(landscape, cells)
   // Compile pipelines and set up GPU state off the critical frame, instead of on the first
@@ -561,12 +570,17 @@ const forward = new Vector3()
 let loaderFrames = 0
 const loader = document.getElementById('loader')
 
+// Render resolution follows the measured frame rate (the first seconds compile and upload).
+const governor = createGovernor(quality, (dpr) => renderer.setPixelRatio(dpr))
+const bootedAt = now()
+
 renderer.setAnimationLoop(() => {
   if (loader && ++loaderFrames === 3) {
     loader.classList.add('done')
     setTimeout(() => loader.remove(), 1000)
   }
   const t = now()
+  governor.frame(t, t - last, t - bootedAt < 3)
   const dt = Math.min(0.05, t - last)
   last = t
 

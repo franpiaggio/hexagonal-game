@@ -163,14 +163,14 @@ export function scatterOnKit(meshes: Mesh[], groundMeshes: Set<Mesh>, R: number,
 }
 
 /** Custom cells (river banks, lake shores, mountains): place from the terrain field directly. */
-export function scatterOnField(field: Field, cx: number, cz: number, R: number, mountain: boolean, seed: number) {
+export function scatterOnField(field: Field, cx: number, cz: number, R: number, mountain: boolean, seed: number, density = 1) {
   const out: Spot[] = []
   let k = 0
   const rand = () => {
     const v = Math.sin((cx * 12.9898 + cz * 78.233 + ++k * 37.719 + seed) * 43758.5453)
     return v - Math.floor(v)
   }
-  const tries = mountain ? 90 : 170
+  const tries = Math.round((mountain ? 90 : 170) * density)
   for (let i = 0; i < tries; i++) {
     const x = (rand() * 2 - 1) * R
     const z = (rand() * 2 - 1) * R

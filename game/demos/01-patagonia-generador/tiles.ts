@@ -38,6 +38,7 @@ import {
 import { BASE_TOP, WATER_LEVEL } from './terrain'
 import { createPropGeometries, scatterOnKit, type Spot } from './props'
 import { unpack, type CustomCells } from './terrain-pool'
+import type { Quality } from './quality'
 
 export const TILE_RADIUS = 2
 const BASE_HEIGHT = 1.6
@@ -141,7 +142,7 @@ function createConiferGeometry() {
   return merged
 }
 
-export async function loadKit(baseUrl: string) {
+export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 'forestCopiesMax'> = { props: 1, forestCopiesMax: 3 }) {
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
   const shared = new Map<string, Material>()
   const ground = createGroundMaterial(WATER_LEVEL)
@@ -197,7 +198,7 @@ export async function loadKit(baseUrl: string) {
     const solid = parts.get(id)!.filter((p) => !(p.material.alphaTest > 0 || p.material.transparent))
     const meshes = solid.map((p) => new Mesh(p.geometry))
     const groundMeshes = new Set(meshes.filter((_, j) => solid[j].material === ground))
-    kitSpots.set(id, scatterOnKit(meshes, groundMeshes, TILE_RADIUS, count, KIT.indexOf(id) + 1))
+    kitSpots.set(id, scatterOnKit(meshes, groundMeshes, TILE_RADIUS, Math.round(count * quality.props), KIT.indexOf(id) + 1))
   }
 
   /** `cells` holds the prebuilt water and mountain cells (see terrain-pool.ts). */
@@ -215,7 +216,9 @@ export async function loadKit(baseUrl: string) {
       }
       b.entries.push(entry)
     }
-    const { forestCopies, villageCopies } = landscape.spec
+    const { villageCopies } = landscape.spec
+    // Extra forest copies are the heaviest geometry on the board; weaker tiers draw fewer.
+    const forestCopies = Math.min(landscape.spec.forestCopies, quality.forestCopiesMax)
     const hash = (q: number, r: number, n: number) => {
       const v = Math.sin((q * 127.1 + r * 311.7 + n * 74.7 + landscape.spec.seed) * 43758.5453)
       return v - Math.floor(v)

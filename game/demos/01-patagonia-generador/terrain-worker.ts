@@ -19,7 +19,14 @@ export type CellResult = {
   spots: Spot[]
   trees: TreeSpot[]
 }
-export type CellRequest = { id: number; landscape: Landscape; radius: number; jobs: CellJob[] }
+export type CellRequest = {
+  id: number
+  landscape: Landscape
+  radius: number
+  jobs: CellJob[]
+  /** Subdivision per cell kind and the share of ground clutter kept (device quality tier). */
+  detail: { mountain: number; water: number; props: number }
+}
 
 function pack(geometry: BufferGeometry, transfer: Set<ArrayBuffer>): PackedGeometry {
   const attributes: PackedGeometry['attributes'] = {}
@@ -34,18 +41,18 @@ function pack(geometry: BufferGeometry, transfer: Set<ArrayBuffer>): PackedGeome
 }
 
 self.onmessage = (event: MessageEvent<CellRequest>) => {
-  const { id, landscape, radius, jobs } = event.data
+  const { id, landscape, radius, jobs, detail } = event.data
   const field = createField(landscape, radius)
   const transfer = new Set<ArrayBuffer>()
   const cells: CellResult[] = jobs.map((job) => {
-    const geo = buildCustomTile(field, job.x, job.z, radius, job.mountain ? 40 : 18)
+    const geo = buildCustomTile(field, job.x, job.z, radius, job.mountain ? detail.mountain : detail.water)
     return {
       i: job.i,
       ground: pack(geo.ground, transfer),
       walls: pack(geo.walls, transfer),
       water: geo.water && pack(geo.water, transfer),
       waterWalls: geo.waterWalls && pack(geo.waterWalls, transfer),
-      spots: scatterOnField(field, job.x, job.z, radius, job.mountain, landscape.spec.seed),
+      spots: scatterOnField(field, job.x, job.z, radius, job.mountain, landscape.spec.seed, detail.props),
       trees: job.mountain ? field.mountainTrees(job.x, job.z) : [],
     }
   })
