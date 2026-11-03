@@ -7,10 +7,35 @@
     <style>
       html, body { background: #16242a; }
       #game { cursor: pointer; touch-action: none; }
+      /* Wordless loader: painted with the first byte of HTML, before any script or model loads. */
+      #loader {
+        position: fixed; inset: 0; display: grid; place-items: center; z-index: 10;
+        background: radial-gradient(ellipse at 50% 45%, #24363d 0%, #16242a 70%);
+        transition: opacity 0.9s ease, visibility 0.9s;
+      }
+      #loader.done { opacity: 0; visibility: hidden; }
+      #loader .cluster { position: relative; width: 84px; height: 84px; }
+      #loader .hex {
+        position: absolute; width: 26px; height: 30px; left: 29px; top: 27px;
+        clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+        background: #8e9a75; opacity: 0.15;
+        animation: rise 1.8s ease-in-out infinite;
+      }
+      #loader .hex:nth-child(2) { transform: translate(27px, 0); animation-delay: 0.15s; background: #6f8c5a; }
+      #loader .hex:nth-child(3) { transform: translate(13.5px, 23px); animation-delay: 0.3s; background: #5f9fae; }
+      #loader .hex:nth-child(4) { transform: translate(-13.5px, 23px); animation-delay: 0.45s; background: #b9ae8c; }
+      #loader .hex:nth-child(5) { transform: translate(-27px, 0); animation-delay: 0.6s; background: #4f6c30; }
+      #loader .hex:nth-child(6) { transform: translate(-13.5px, -23px); animation-delay: 0.75s; background: #c9c7bf; }
+      #loader .hex:nth-child(7) { transform: translate(13.5px, -23px); animation-delay: 0.9s; background: #a5553f; }
+      @keyframes rise { 0%, 100% { opacity: 0.15; translate: 0 4px; } 40% { opacity: 0.95; translate: 0 -2px; } }
+      @media (prefers-reduced-motion: reduce) { #loader .hex { animation: none; opacity: 0.6; } }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
+    <div id="loader" aria-hidden="true">
+      <div class="cluster"><i class="hex"></i><i class="hex"></i><i class="hex"></i><i class="hex"></i><i class="hex"></i><i class="hex"></i><i class="hex"></i></div>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

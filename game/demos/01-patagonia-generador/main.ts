@@ -557,7 +557,15 @@ target.copy(targetGoal)
 focalLength.value = focalGoal
 const forward = new Vector3()
 
+// Fade the HTML loader out once the first landscape has actually been drawn.
+let loaderFrames = 0
+const loader = document.getElementById('loader')
+
 renderer.setAnimationLoop(() => {
+  if (loader && ++loaderFrames === 3) {
+    loader.classList.add('done')
+    setTimeout(() => loader.remove(), 1000)
+  }
   const t = now()
   const dt = Math.min(0.05, t - last)
   last = t
