@@ -240,9 +240,10 @@ const pipeline = new RenderPipeline(renderer)
 pipeline.outputColorTransform = false
 const scenePass = pass(scene, camera)
 const sceneColor = scenePass.getTextureNode('output')
+const plain = vec4(sceneColor.rgb, sceneColor.a)
 // AO needs a second (normal) render target on the scene pass; low tiers skip both.
 let aoPass: ReturnType<typeof ao> | null = null
-let occluded = vec4(sceneColor.rgb, sceneColor.a)
+let occluded = plain
 if (quality.ao > 0) {
   scenePass.setMRT(mrt({ output, normal: packNormalToRGB(normalView) }))
   const normalTexture = scenePass.getTextureNode('normal')
@@ -254,18 +255,33 @@ if (quality.ao > 0) {
   const occlusion = nodeObject(aoPass).getTextureNode().r
   occluded = vec4(sceneColor.rgb.mul(mix(float(1), occlusion, 0.75)), sceneColor.a)
 }
-// DepthOfFieldNode typings lag the runtime: wrap it so it composes like any vec4 node.
-const blurred = nodeObject(dof(occluded, scenePass.getViewZNode(), focusDistance, focalLength, bokehScale)) as unknown as ReturnType<typeof vec4>
-const glow = nodeObject(bloom(blurred, 1, 0.55, 0.82)) as unknown as ReturnType<typeof vec4>
-const hdr = blurred.add(glow.mul(bloomStrength))
-// Tone map first, then grade in display space: miniature photos read punchy and contrasty.
-const display = renderOutput(hdr)
-const contrasted = display.rgb.sub(0.5).mul(1.08).add(0.5)
-const graded = saturation(contrasted, 1.08)
+
 const vignette = smoothstep(0.38, 1.0, length(screenUV.sub(0.5).mul(vec2(1.2, 1.0))))
 // hash() takes a scalar: fold both screen axes and time into one seed (a vec2 would only use x → stripes).
 const grain = hash(screenUV.x.mul(1913.7).add(screenUV.y.mul(7919.3)).add(time.mul(13.17))).sub(0.5).mul(0.016)
-pipeline.outputNode = vec4(graded.mul(mix(float(1), float(0.82), vignette)).add(vec3(grain)), 1)
+
+/** Lens + grade over a scene image. Built twice when AO may be dropped at runtime. */
+function finish(source: ReturnType<typeof vec4>) {
+  // DepthOfFieldNode typings lag the runtime: wrap it so it composes like any vec4 node.
+  const blurred = nodeObject(dof(source, scenePass.getViewZNode(), focusDistance, focalLength, bokehScale)) as unknown as ReturnType<typeof vec4>
+  const glow = nodeObject(bloom(blurred, 1, 0.55, 0.82)) as unknown as ReturnType<typeof vec4>
+  const hdr = blurred.add(glow.mul(bloomStrength))
+  // Tone map first, then grade in display space: miniature photos read punchy and contrasty.
+  const display = renderOutput(hdr)
+  const contrasted = display.rgb.sub(0.5).mul(1.08).add(0.5)
+  const graded = saturation(contrasted, 1.08)
+  return { blurred, hdr, out: vec4(graded.mul(mix(float(1), float(0.82), vignette)).add(vec3(grain)), 1) }
+}
+const { blurred, hdr, out: finalOutput } = finish(occluded)
+pipeline.outputNode = finalOutput
+
+/** Runtime cut: stop computing AO (the pipeline only runs nodes reachable from its output). */
+function dropAO() {
+  if (!aoPass) return
+  aoPass = null
+  pipeline.outputNode = finish(plain).out
+  pipeline.needsUpdate = true
+}
 if (import.meta.env.DEV) Object.assign(window, { __post: { pipeline, sceneColor, occluded, blurred, hdr, aoPass, renderOutput, focusDistance, focalLength, camera, scene, sun, quality, governor: () => governor } })
 
 // --- Landscapes --------------------------------------------------------------------------
@@ -496,40 +512,71 @@ function orbit(radians: number) {
   }
 }
 
-// Scroll (wheel or two-finger swipe) orbits the camera instead of scrolling the page.
+/** Viewer zoom on top of the automatic framing (1 = framed shot); eased towards the goal. */
+let zoom = 1
+let zoomGoal = 1
+function zoomBy(factor: number) {
+  // Full-bleed can only move in: backing out would uncover the board's edge.
+  zoomGoal = Math.min(fullBleed ? 1 : 1.6, Math.max(0.4, zoomGoal * factor))
+}
+
+// Wheel: vertical scroll zooms, a sideways swipe (trackpad) orbits; a trackpad pinch arrives as
+// ctrl+wheel and zooms too. The page itself never scrolls.
 canvas.addEventListener(
   'wheel',
   (e) => {
     e.preventDefault()
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1
-    const delta = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * unit
-    orbit(Math.max(-0.4, Math.min(0.4, delta * 0.0025)))
+    const dx = e.deltaX * unit
+    const dy = e.deltaY * unit
+    if (Math.abs(dx) > Math.abs(dy) && !e.ctrlKey) orbit(Math.max(-0.4, Math.min(0.4, dx * 0.0025)))
+    else zoomBy(Math.exp(Math.max(-0.5, Math.min(0.5, dy * (e.ctrlKey ? 0.01 : 0.0015)))))
   },
   { passive: false },
 )
 
-// Click / tap advances; dragging orbits (a drag never counts as a click).
-let downAt: { x: number; y: number } | null = null
-let dragX = 0
+// One pointer drags to orbit; two pointers pinch to zoom. Tapping the board does nothing (the
+// round button below starts a new landscape), so exploring never throws the landscape away.
+const pointers = new Map<number, { x: number; y: number }>()
+let pinch = 0
 canvas.addEventListener('pointerdown', (e) => {
-  downAt = { x: e.clientX, y: e.clientY }
-  dragX = e.clientX
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
   canvas.setPointerCapture(e.pointerId)
+  pinch = 0
 })
 canvas.addEventListener('pointermove', (e) => {
-  if (!downAt) return
-  orbit((e.clientX - dragX) * -0.006)
-  dragX = e.clientX
+  const p = pointers.get(e.pointerId)
+  if (!p) return
+  if (pointers.size === 1) orbit((e.clientX - p.x) * -0.006)
+  p.x = e.clientX
+  p.y = e.clientY
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()]
+    const d = Math.hypot(a.x - b.x, a.y - b.y)
+    if (pinch) zoomBy(pinch / d)
+    pinch = d
+  }
 })
-canvas.addEventListener('pointerup', (e) => {
-  if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 8) next()
-  downAt = null
+const release = (e: PointerEvent) => {
+  pointers.delete(e.pointerId)
+  pinch = 0
+}
+canvas.addEventListener('pointerup', release)
+canvas.addEventListener('pointercancel', release)
+
+// New landscape: a small round button, no text.
+const nextButton = document.getElementById('next')
+nextButton?.addEventListener('click', () => {
+  nextButton.classList.remove('spin')
+  void nextButton.offsetWidth
+  nextButton.classList.add('spin')
+  next()
 })
-canvas.addEventListener('pointercancel', () => (downAt = null))
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' || e.code === 'ArrowRight' || e.code === 'Enter') next()
   if (e.code === 'KeyF') {
     fullBleed = !fullBleed
+    if (fullBleed) zoomGoal = Math.min(zoomGoal, 1)
     index--
     next()
   }
@@ -539,13 +586,15 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
-// Hide the cursor while idle so screen recordings stay clean.
-let cursorTimer = 0
-window.addEventListener('pointermove', () => {
-  canvas.style.cursor = 'pointer'
-  clearTimeout(cursorTimer)
-  cursorTimer = window.setTimeout(() => (canvas.style.cursor = 'none'), 1200)
-})
+// Hide the cursor and the button while idle so screen recordings stay clean.
+let idleTimer = 0
+const wake = () => {
+  document.body.classList.remove('idle')
+  clearTimeout(idleTimer)
+  idleTimer = window.setTimeout(() => document.body.classList.add('idle'), 2500)
+}
+for (const type of ['pointermove', 'pointerdown', 'wheel', 'keydown'] as const) window.addEventListener(type, wake, { passive: true })
+wake()
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight
@@ -571,7 +620,23 @@ let loaderFrames = 0
 const loader = document.getElementById('loader')
 
 // Render resolution follows the measured frame rate (the first seconds compile and upload).
-const governor = createGovernor(quality, (dpr) => renderer.setPixelRatio(dpr))
+// Past the resolution floor, a weak or overloaded device sheds effects, then frame rate: the
+// motion keeps its speed at 30 fps (everything is driven by the clock, not by frame count).
+let frameInterval = 0
+let lastRendered = 0
+const governor = createGovernor(quality, (dpr) => renderer.setPixelRatio(dpr), [
+  () => {
+    const size = Math.max(512, sun.shadow.mapSize.x / 2)
+    // The shadow node resizes its render target to mapSize on its next update.
+    sun.shadow.mapSize.set(size, size)
+    sun.shadow.needsUpdate = true
+  },
+  dropAO,
+  () => {
+    frameInterval = 1 / 30
+    governor.setFloorInterval(1 / 30)
+  },
+])
 const bootedAt = now()
 
 renderer.setAnimationLoop(() => {
@@ -580,6 +645,9 @@ renderer.setAnimationLoop(() => {
     setTimeout(() => loader.remove(), 1000)
   }
   const t = now()
+  // Frame-rate cap: skip display refreshes until the interval has passed (small slack for jitter).
+  if (frameInterval && t - lastRendered < frameInterval - 0.004) return
+  lastRendered = t
   governor.frame(t, t - last, t - bootedAt < 3)
   const dt = Math.min(0.05, t - last)
   last = t
@@ -588,15 +656,16 @@ renderer.setAnimationLoop(() => {
 
   blendMood(dt)
   distance += (distanceGoal - distance) * (1 - Math.exp(-dt * 1.5))
+  zoom += (zoomGoal - zoom) * (1 - Math.exp(-dt * 8))
   focus.lerp(focusGoal, 1 - Math.exp(-dt * 1.2))
   target.lerp(targetGoal, 1 - Math.exp(-dt * 1.2))
   focalLength.value += (focalGoal - focalLength.value) * (1 - Math.exp(-dt * 1.2))
   yaw += (yawGoal - yaw) * (1 - Math.exp(-dt * 6))
   const az = AZIMUTH + yaw + Math.sin(t * 0.06) * 0.07
   camera.position.set(
-    target.x + Math.cos(ELEVATION) * Math.cos(az) * distance,
-    target.y + Math.sin(ELEVATION) * distance,
-    target.z + Math.cos(ELEVATION) * Math.sin(az) * distance,
+    target.x + Math.cos(ELEVATION) * Math.cos(az) * distance * zoom,
+    target.y + Math.sin(ELEVATION) * distance * zoom,
+    target.z + Math.cos(ELEVATION) * Math.sin(az) * distance * zoom,
   )
   camera.lookAt(target)
   // Focal plane through the point of interest, measured along the view axis.

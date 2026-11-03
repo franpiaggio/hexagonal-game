@@ -6,7 +6,29 @@
     <title>01 · Patagonia generador</title>
     <style>
       html, body { background: #16242a; }
-      #game { cursor: pointer; touch-action: none; }
+      #game { cursor: grab; touch-action: none; display: block; }
+      #game:active { cursor: grabbing; }
+      body.idle, body.idle #game { cursor: none; }
+      /* New landscape: one small round button, icon only. */
+      #next {
+        position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 5;
+        width: 48px; height: 48px; margin-left: -24px; padding: 0; border-radius: 50%;
+        display: grid; place-items: center; cursor: pointer;
+        color: #f3efe4; background: rgba(22, 36, 42, 0.42);
+        border: 1px solid rgba(243, 239, 228, 0.22);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+        transition: opacity 0.6s ease, transform 0.2s ease, background 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #next:hover { background: rgba(22, 36, 42, 0.62); transform: scale(1.06); }
+      #next:active { transform: scale(0.94); }
+      #next:focus-visible { outline: 2px solid #f3efe4; outline-offset: 3px; }
+      #next svg { width: 22px; height: 22px; }
+      #next.spin svg { animation: turn 0.6s cubic-bezier(0.3, 0.7, 0.3, 1); }
+      @keyframes turn { to { transform: rotate(360deg); } }
+      body.idle #next { opacity: 0; pointer-events: none; }
+      @media (hover: none) { body.idle #next { opacity: 0.55; pointer-events: auto; } }
       /* Wordless loader: painted with the first byte of HTML, before any script or model loads. */
       #loader {
         position: fixed; inset: 0; display: grid; place-items: center; z-index: 10;
@@ -33,6 +55,12 @@
   </head>
   <body>
     <canvas id="game"></canvas>
+    <button id="next" type="button" aria-label="Nuevo paisaje" title="Nuevo paisaje">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+        <path d="M21 3v5h-5" />
+      </svg>
+    </button>
     <div id="loader" aria-hidden="true">
       <div class="cluster"><i class="hex"></i><i class="hex"></i><i class="hex"></i><i class="hex"></i><i class="hex"></i><i class="hex"></i><i class="hex"></i></div>
     </div>
