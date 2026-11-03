@@ -41,6 +41,7 @@ import { generateLandscape, specForIndex } from './generator'
 import { mood as moodUniforms } from './materials'
 import { MOODS, type Mood } from './moods'
 import { createField } from './terrain'
+import { padLandscape } from './fullscreen'
 import { loadKit, type Board } from './tiles'
 
 // --- Renderer -------------------------------------------------------------------------
@@ -51,6 +52,8 @@ const renderer = new WebGPURenderer({ canvas, antialias: true })
 const HQ = new URLSearchParams(window.location.search).has('hq')
 /** Camera framing: < 1 is closer (crops the board edges), 1 fits the whole board. `?zoom=0.9` overrides. */
 const ZOOM = Number(new URLSearchParams(window.location.search).get('zoom')) || 0.74
+/** Full-bleed: the landscape runs past every screen edge. `?full` or the F key. */
+let fullBleed = new URLSearchParams(window.location.search).has('full')
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, HQ ? 2 : 1.5))
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.toneMapping = AgXToneMapping
@@ -169,6 +172,45 @@ function distanceFor(boardRadius: number) {
   return Math.max(fitV * 0.8, fitH) * ZOOM
 }
 
+/**
+ * Full-bleed framing: the farthest camera whose four screen corners still land on the
+ * composed landscape (hex radius `cells`, world units per cell `R`), across the camera sway.
+ */
+function distanceInside(cells: number, R: number) {
+  const probe = camera.clone()
+  const ray = new Vector3()
+  const hit = new Vector3()
+  const fits = (d: number) => {
+    for (const az of [AZIMUTH - 0.08, AZIMUTH + 0.08]) {
+      probe.position.set(
+        target.x + Math.cos(ELEVATION) * Math.cos(az) * d,
+        target.y + Math.sin(ELEVATION) * d,
+        target.z + Math.cos(ELEVATION) * Math.sin(az) * d,
+      )
+      probe.lookAt(target)
+      probe.updateMatrixWorld()
+      for (const [nx, ny] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        ray.set(nx, ny, 0.5).unproject(probe).sub(probe.position).normalize()
+        if (ray.y >= -1e-3) return false
+        const k = -probe.position.y / ray.y
+        hit.copy(probe.position).addScaledVector(ray, k)
+        const r = -hit.z / (1.5 * R)
+        const q = hit.x / (Math.sqrt(3) * R) - r / 2
+        if (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) > cells) return false
+      }
+    }
+    return true
+  }
+  let lo = 4
+  let hi = 200
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2
+    if (fits(mid)) lo = mid
+    else hi = mid
+  }
+  return lo
+}
+
 // --- Post: contact AO → depth-of-field tilt-shift → bloom → display-space grade ----------
 
 const focusDistance = uniform(60)
@@ -229,14 +271,21 @@ const now = () => performance.now() / 1000
 
 const boardRadiusOf = (board: Board) => Math.max(...board.tiles.map((t) => Math.hypot(t.x, t.z))) + 2
 
+/** Camera distance for the live landscape; recomputed on resize. */
+let frame = () => distanceGoal
+
 function showLandscape(i: number) {
-  const landscape = generateLandscape(specForIndex(i))
+  const composed = generateLandscape(specForIndex(i))
+  const PAD = 3
+  const landscape = fullBleed ? padLandscape(composed, PAD) : composed
   const field = createField(landscape, 2)
   const board = kit.buildBoard(landscape, field)
   scene.add(board.group)
 
   const radius = boardRadiusOf(board)
-  distanceGoal = distanceFor(radius)
+  const full = fullBleed
+  frame = () => (full ? distanceInside(composed.spec.radius + PAD + 0.3, 2) : distanceFor(radius))
+  distanceGoal = frame()
   fitShadow(radius)
   focalLength.value = radius * 0.55
   targetMood = MOODS[landscape.spec.mood]
@@ -338,6 +387,11 @@ canvas.addEventListener('pointerup', (e) => {
 })
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' || e.code === 'ArrowRight' || e.code === 'Enter') next()
+  if (e.code === 'KeyF') {
+    fullBleed = !fullBleed
+    index--
+    next()
+  }
   if (e.code === 'KeyA') {
     autoplay = !autoplay
     lastAdvance = now()
@@ -357,7 +411,7 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight)
   const live = shows.find((s) => s.exitStart === null)
-  if (live) distanceGoal = distanceFor(boardRadiusOf(live.board))
+  if (live) distanceGoal = frame()
 })
 
 // --- Loop --------------------------------------------------------------------------------

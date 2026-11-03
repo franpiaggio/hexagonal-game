@@ -22,6 +22,8 @@ export type Placement = {
   scale: [number, number, number]
   /** 0..1, when this tile starts rising in the reveal animation. */
   reveal: number
+  /** Overrides the spec's forest / village copies (filler tiles stay light). */
+  copies?: number
 }
 
 export type River = { points: [number, number][]; halfWidth: number }

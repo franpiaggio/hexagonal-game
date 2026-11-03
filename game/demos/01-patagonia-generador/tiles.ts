@@ -238,7 +238,7 @@ export async function loadKit(baseUrl: string) {
       }
 
       const tile = placement.tile as KitTile
-      const copies = tile === 'bosque' ? forestCopies : tile === 'caserio' ? villageCopies : 1
+      const copies = placement.copies ?? (tile === 'bosque' ? forestCopies : tile === 'caserio' ? villageCopies : 1)
       for (let c = 0; c < copies; c++) {
         const turn = tile === 'caserio' ? Math.PI * c : ((Math.PI * 2) / 3) * c
         // No mirroring: a negative-determinant instance flips winding, and InstancedMesh can't

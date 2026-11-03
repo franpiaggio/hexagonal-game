@@ -12,6 +12,8 @@ tilt-shift. Pensado para grabar y postear: sin UI, cada click arma un paisaje nu
 | `?v=N` | Arrancar en la variante N |
 | `?auto` o `?auto=10` | Autoplay desde el inicio (segundos por variante) |
 | `?hq` | Render a 2× pixel ratio (para grabar; por defecto 1,5×) |
+| `F` o `?full` | Pantalla completa: el paisaje sigue más allá de los bordes (ríos, montañas, bosque de relleno) y la cámara encuadra por dentro |
+| `?zoom=0.9` | Encuadre del modo normal (< 1 más cerca; por defecto 0,74) |
 
 El cursor se oculta solo tras 1,2 s quieto, para grabar limpio.
 

@@ -108,8 +108,8 @@ export function createGroundMaterial(waterLevel: number) {
 
     // Lake bed: darker with depth, with caustic light lines dancing on it.
     const depth = saturate(float(waterLevel).sub(y).mul(9))
-    const cells = mx_worley_noise_float(vec3(p.mul(2.6), time.mul(0.35)))
-    const cells2 = mx_worley_noise_float(vec3(p.mul(3.4).add(7), time.mul(0.28)))
+    const cells = mx_worley_noise_float(vec3(p.mul(2.6), time.mul(0.15)))
+    const cells2 = mx_worley_noise_float(vec3(p.mul(3.4).add(7), time.mul(0.12)))
     const caustic = pow(saturate(float(1).sub(cells.min(cells2).mul(2.2))), 3).mul(mood.caustics).mul(float(1).sub(mood.ice))
     const bed = surface.mul(mix(float(1), float(0.55), depth)).add(caustic.mul(0.45).mul(depth.mul(1.4).min(1)))
     const wet = surface.mul(0.82)
@@ -221,11 +221,13 @@ export function createWaterMaterial() {
   const material = new MeshStandardNodeMaterial({ metalness: 0, side: DoubleSide, transparent: true })
 
   const p = positionWorld.xz
+  // Calm lake pace: everything on the surface runs on a slowed clock.
+  const slow = time.mul(0.4)
   // Two drifting wave trains plus fine chop: enough slope for the sun to break into glints.
   const ripple = Fn(() => {
-    const a = mx_noise_float(vec3(p.mul(1.6).add(time.mul(vec2(0.05, 0.03))), time.mul(0.3)))
-    const b = mx_noise_float(vec3(p.mul(4.2).sub(time.mul(vec2(0.08, -0.05))), time.mul(0.55)))
-    const c = mx_noise_float(vec3(p.mul(11.0), time.mul(0.9)))
+    const a = mx_noise_float(vec3(p.mul(1.6).add(slow.mul(vec2(0.05, 0.03))), slow.mul(0.3)))
+    const b = mx_noise_float(vec3(p.mul(4.2).sub(slow.mul(vec2(0.08, -0.05))), slow.mul(0.55)))
+    const c = mx_noise_float(vec3(p.mul(11.0), slow.mul(0.9)))
     return a.mul(0.55).add(b.mul(0.3)).add(c.mul(0.15)).mul(float(1).sub(mood.ice))
   })()
   material.normalNode = bumpMap(ripple, float(1.4))
@@ -247,20 +249,20 @@ export function createWaterMaterial() {
 
     // Sun-dappled pattern: thin meandering light lines (ridges of warped noise), like
     // sunlight refracted by ripples. Two layers drifting against each other.
-    const warp = mx_noise_float(vec3(p.mul(0.9), time.mul(0.2))).mul(0.6)
-    const r1 = float(1).sub(mx_noise_float(vec3(p.mul(1.9).add(warp), time.mul(0.28))).abs())
-    const r2 = float(1).sub(mx_noise_float(vec3(p.mul(3.7).sub(warp), time.mul(0.4).add(5))).abs())
+    const warp = mx_noise_float(vec3(p.mul(0.9), slow.mul(0.2))).mul(0.6)
+    const r1 = float(1).sub(mx_noise_float(vec3(p.mul(1.9).add(warp), slow.mul(0.28))).abs())
+    const r2 = float(1).sub(mx_noise_float(vec3(p.mul(3.7).sub(warp), slow.mul(0.4).add(5))).abs())
     const veins = smoothstep(0.975, 0.997, r1).mul(0.55).add(smoothstep(0.982, 0.998, r2).mul(0.3))
     const patterned = mirrored.add(mood.waterSky.mul(veins).mul(0.13).mul(float(1).sub(core.mul(0.6))))
 
     // Glints: rare, sharp sparkles drifting on the surface.
-    const sparkle = smoothstep(0.82, 0.95, mx_noise_float(vec3(p.mul(9.0), time.mul(1.4))).mul(0.5).add(0.5))
+    const sparkle = smoothstep(0.82, 0.95, mx_noise_float(vec3(p.mul(9.0), slow.mul(1.4))).mul(0.5).add(0.5))
     const glinted = patterned.add(vec3(1, 0.97, 0.9).mul(sparkle.mul(0.35)))
 
     // Foam: a broken lip on the bank plus thin wave lines that roll in towards the shore.
-    const foamNoise = mx_noise_float(vec3(p.mul(6), time.mul(0.5))).mul(0.5).add(0.5)
+    const foamNoise = mx_noise_float(vec3(p.mul(6), slow.mul(0.5))).mul(0.5).add(0.5)
     const lip = smoothstep(-0.09, -0.01, shore).mul(smoothstep(0.35, 0.65, foamNoise))
-    const wave = sin(shore.mul(26).add(time.mul(1.6)).add(foamNoise.mul(2.5)))
+    const wave = sin(shore.mul(26).add(slow.mul(1.6)).add(foamNoise.mul(2.5)))
     const lines = smoothstep(0.86, 0.97, wave).mul(smoothstep(-0.32, -0.08, shore)).mul(smoothstep(0.3, 0.6, foamNoise))
     const foam = max(lip, lines.mul(0.7))
     const water = mix(glinted, vec3(0.93, 0.97, 0.96), foam.mul(0.75))
