@@ -12,8 +12,8 @@ import {
 } from 'three'
 import { RenderPipeline, WebGPURenderer } from 'three/webgpu'
 import {
-  colorToDirection,
-  directionToColor,
+  unpackRGBToNormal,
+  packNormalToRGB,
   float,
   hash,
   length,
@@ -175,10 +175,10 @@ const bokehScale = uniform(6.5)
 const pipeline = new RenderPipeline(renderer)
 pipeline.outputColorTransform = false
 const scenePass = pass(scene, camera)
-scenePass.setMRT(mrt({ output, normal: directionToColor(normalView) }))
+scenePass.setMRT(mrt({ output, normal: packNormalToRGB(normalView) }))
 const sceneColor = scenePass.getTextureNode('output')
 const normalTexture = scenePass.getTextureNode('normal')
-const sceneNormal = sample((uv) => colorToDirection(normalTexture.sample(uv)))
+const sceneNormal = sample((uv) => unpackRGBToNormal(normalTexture.sample(uv)))
 const aoPass = ao(scenePass.getTextureNode('depth'), sceneNormal, camera)
 aoPass.resolutionScale = 0.5
 aoPass.radius.value = 0.35
