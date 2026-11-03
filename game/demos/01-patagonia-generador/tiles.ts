@@ -174,11 +174,14 @@ export async function loadKit(baseUrl: string) {
     const group = new Group()
     const owned: BufferGeometry[] = []
     type Entry = { tile: number; pre: Matrix4; prop: [number, number, number] | null }
-    type Bucket = { geometry: BufferGeometry; material: Material; entries: Entry[]; cast: boolean; mesh?: InstancedMesh }
+    type Bucket = { geometry: BufferGeometry; material: Material; entries: Entry[]; cast: boolean; top: number; mesh?: InstancedMesh }
     const buckets = new Map<string, Bucket>()
     const add = (k: string, geometry: BufferGeometry, material: Material, entry: Entry, cast = true) => {
       let b = buckets.get(k)
-      if (!b) buckets.set(k, (b = { geometry, material, entries: [], cast }))
+      if (!b) {
+        geometry.boundingBox ?? geometry.computeBoundingBox()
+        buckets.set(k, (b = { geometry, material, entries: [], cast, top: Math.max(0, geometry.boundingBox!.max.y) }))
+      }
       b.entries.push(entry)
     }
     const { forestCopies, villageCopies } = landscape.spec
@@ -285,6 +288,7 @@ export async function loadKit(baseUrl: string) {
     const zero = new Matrix4().makeScale(0, 0, 0)
     const m = new Matrix4()
     const s = new Matrix4()
+    const s2 = new Matrix4()
     const q = new Quaternion()
     const qz = new Quaternion()
     const pos = new Vector3()
@@ -307,7 +311,16 @@ export async function loadKit(baseUrl: string) {
       for (const b of buckets.values()) {
         b.entries.forEach((e, j) => {
           m.multiplyMatrices(tileMatrices[e.tile], e.pre)
-          if (e.prop) m.multiply(s.makeScale(e.prop[0], e.prop[1] * Math.max(tiles[e.tile].grow, 0.0001), e.prop[2]))
+          if (e.prop) {
+            // Grow by rising out of the ground with a gentle stretch, never by flattening: a
+            // squashed house lies coplanar with the grass and z-fights (flicker) as it emerges.
+            const g = tiles[e.tile].grow
+            if (g <= 0.001) m.copy(zero)
+            else {
+              const sink = (1 - Math.min(g, 1)) * (b.top * e.prop[1] + 0.01)
+              m.multiply(s.makeTranslation(0, -sink, 0)).multiply(s2.makeScale(e.prop[0], e.prop[1] * (0.5 + 0.5 * g), e.prop[2]))
+            }
+          }
           b.mesh!.setMatrixAt(j, m)
         })
         b.mesh!.instanceMatrix.needsUpdate = true
