@@ -10,6 +10,7 @@ import {
   ConeGeometry,
   Color,
   CylinderGeometry,
+  DoubleSide,
   Group,
   InstancedMesh,
   Matrix4,
@@ -44,11 +45,29 @@ export const TILE_RADIUS = 2
 const BASE_HEIGHT = 1.6
 // Mountains are fully procedural (terrain.ts): the kit's peak model is not loaded.
 const KIT: KitTile[] = ['pradera', 'bosque', 'caserio']
+// Standalone houses (models/casas_5), modelled in metres: scaled down to sit beside the kit's own.
+const HOUSES = ['01_cabana_alerce', '02_chalet_balcon', '03_casa_piedra', '04_casa_en_l', '05_casa_galeria']
+const HOUSE_SCALE = 0.065
+/** Share of village cells built as a homestead (meadow + standalone houses) instead of the kit village. */
+const HOMESTEAD_SHARE = 0.55
+/**
+ * Where houses stand on a homestead, tile-local before the cell's rotation. They keep clear of
+ * the meadow's lenga (around -0.87, -0.73) and of the hex rim.
+ */
+const HOUSE_SLOTS: [number, number][][] = [
+  [[0.3, 0.2]],
+  [
+    [0.65, -0.45],
+    [-0.35, 0.7],
+  ],
+]
 const Y_AXIS = new Vector3(0, 1, 0)
 const X_AXIS = new Vector3(1, 0, 0)
 const Z_AXIS = new Vector3(0, 0, 1)
 
 type Part = { geometry: BufferGeometry; material: Material; ground: boolean }
+/** A standalone house merged into one vertex-coloured mesh; `hx`/`hz` are its footprint half extents. */
+type House = { geometry: BufferGeometry; hx: number; hz: number }
 
 /** Animation state the caller writes each frame; `sync()` turns it into matrices. */
 export type TileState = {
@@ -94,6 +113,39 @@ function bakeQuantization(mesh: Mesh) {
 }
 
 const baseName = (name: string) => name.replace(/^Miniatura · /, '').replace(/\.\d+$/, '')
+
+/**
+ * Merges a house (a dozen flat-coloured PBR materials) into ONE geometry with each material's
+ * colour baked into the vertices: one draw call per house model instead of twelve. Its normal
+ * maps are dropped; at miniature scale they are below a pixel anyway.
+ */
+function mergeHouse(root: Group): House {
+  const pieces: BufferGeometry[] = []
+  root.updateMatrixWorld(true)
+  root.traverse((node) => {
+    const mesh = node as Mesh
+    if (!mesh.isMesh) return
+    bakeQuantization(mesh)
+    const src = mesh.geometry
+    const g = new BufferGeometry()
+    g.setAttribute('position', src.getAttribute('position'))
+    g.setAttribute('normal', src.getAttribute('normal'))
+    if (src.index) g.setIndex(src.index)
+    const tint = (mesh.material as MeshStandardMaterial).color
+    const colors = new Float32Array(g.getAttribute('position').count * 3)
+    for (let i = 0; i < colors.length; i += 3) colors.set([tint.r, tint.g, tint.b], i)
+    g.setAttribute('color', new BufferAttribute(colors, 3))
+    pieces.push(g.index ? g.toNonIndexed() : g)
+  })
+  const geometry = mergeGeometries(pieces)!
+  geometry.scale(HOUSE_SCALE, HOUSE_SCALE, HOUSE_SCALE)
+  geometry.computeBoundingBox()
+  const box = geometry.boundingBox!
+  // Sit a hair into the ground so no sliver of sky shows under the doorsteps on uneven turf.
+  geometry.translate(0, -box.min.y - 0.01, 0)
+  geometry.computeBoundingBox()
+  return { geometry, hx: Math.max(-box.min.x, box.max.x), hz: Math.max(-box.min.z, box.max.z) }
+}
 
 /**
  * A bush from a chunk of a kit tree's foliage: the `count` leaf triangles nearest to a seed
@@ -225,6 +277,11 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
       parts.set(id, list)
     }),
   )
+  const houses = await Promise.all(HOUSES.map(async (id) => mergeHouse((await loader.loadAsync(`${baseUrl}casas/${id}.glb`)).scene)))
+  const houseMaterial = createSnowableMaterial(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }))
+  // Some roof sheets and eaves are single planes modelled for double-sided rendering.
+  houseMaterial.side = DoubleSide
+  houseMaterial.name = 'casas'
 
   const baseGeometry = new CylinderGeometry(TILE_RADIUS * 0.999, TILE_RADIUS * 0.999, BASE_HEIGHT, 6)
   baseGeometry.translate(0, BASE_TOP - BASE_HEIGHT / 2, 0)
@@ -289,6 +346,51 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
       })
     }
 
+    /**
+     * A homestead: the meadow cell (turf and its lenga, without the loose stones) with one or
+     * two standalone houses, picked and turned per cell. Ground clutter keeps off their footprint.
+     */
+    const meadow = parts.get('pradera')!
+    const addHomestead = (i: number, placement: Placement, state: TileState) => {
+      const turn = (placement.rot * Math.PI) / 3
+      const around = new Matrix4().makeRotationY(turn)
+      meadow.forEach((part, p) => {
+        if (part.material.name === 'roca y revoque') return
+        add(`pradera:${p}`, part.geometry, part.material, { tile: i, pre: around, prop: part.ground ? null : [1, placement.scale[1], 1] })
+      })
+      const slots = HOUSE_SLOTS[Math.min(villageCopies, HOUSE_SLOTS.length) - 1]
+      const first = Math.floor(hash(placement.q, placement.r, 8) * houses.length)
+      const footprints = slots.map(([sx, sz], k) => {
+        const model = (first + k * 2) % houses.length
+        const house = houses[model]
+        const x = sx + (hash(placement.q, placement.r, 9 + k) - 0.5) * 0.16
+        const z = sz + (hash(placement.q, placement.r, 11 + k) - 0.5) * 0.16
+        // Square to the cell's sides most of the time, now and then askew like a real farm.
+        const yaw = Math.floor(hash(placement.q, placement.r, 13 + k) * 6) * (Math.PI / 3) + (hash(placement.q, placement.r, 15 + k) < 0.3 ? 0.35 : 0)
+        const local = new Matrix4().makeTranslation(x, 0, z).multiply(new Matrix4().makeRotationY(yaw))
+        add(`casa:${model}`, house.geometry, houseMaterial, { tile: i, pre: around.clone().multiply(local), prop: [1, 1, 1] })
+        return { x, z, cos: Math.cos(yaw), sin: Math.sin(yaw), hx: house.hx + 0.06, hz: house.hz + 0.06 }
+      })
+      const clear = (sp: Spot) =>
+        footprints.every((f) => {
+          const dx = sp.x - f.x
+          const dz = sp.z - f.z
+          // Into the house's own frame (inverse of its yaw about +Y).
+          const lx = dx * f.cos - dz * f.sin
+          const lz = dx * f.sin + dz * f.cos
+          return Math.abs(lx) > f.hx || Math.abs(lz) > f.hz
+        })
+      addProps(i, placement, (kitSpots.get('pradera') ?? []).filter(clear), turn)
+      const [fx, fz] = [footprints[0].x, footprints[0].z]
+      state.light = new Vector3(fx, 0.32, fz).applyMatrix4(around)
+    }
+
+    // A fixed share of the village cells (shuffled per landscape) become homesteads, so every
+    // village mixes both looks instead of leaving it to chance.
+    const villageCells = landscape.tiles.flatMap((t, i) => (t.tile === 'caserio' && !t.lite ? [i] : []))
+    villageCells.sort((a, b) => hash(landscape.tiles[a].q, landscape.tiles[a].r, 7) - hash(landscape.tiles[b].q, landscape.tiles[b].r, 7))
+    const homesteads = new Set(villageCells.slice(0, Math.round(villageCells.length * HOMESTEAD_SHARE)))
+
     const tiles: TileState[] = landscape.tiles.map((placement, i) => {
       const [x, z] = axialToWorld(placement.q, placement.r, TILE_RADIUS)
       const state: TileState = { placement, x, z, y: 0, scale: 0, tiltX: 0, tiltZ: 0, grow: 0, root: null, light: null }
@@ -336,6 +438,11 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
             add('conifer', conifer, treeMaterial, { tile: i, pre, prop: [1, 1, 1] })
           }
         }
+        return state
+      }
+
+      if (homesteads.has(i)) {
+        addHomestead(i, placement, state)
         return state
       }
 
