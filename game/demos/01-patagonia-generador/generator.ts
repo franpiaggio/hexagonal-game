@@ -55,7 +55,7 @@ export type LandscapeSpec = {
   mood: MoodId
   /** Copies of the kit forest per forest cell (1..3): denser woods, same draw calls. */
   forestCopies: number
-  /** Copies of the kit houses per village cell (1..2). */
+  /** Standalone houses per homestead cell (1..2); the kit village itself is drawn once. */
   villageCopies: number
   /** Camera distance multiplier: < 1 frames this landscape closer (default 1). */
   zoom?: number
