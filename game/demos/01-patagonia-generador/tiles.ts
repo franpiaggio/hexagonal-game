@@ -425,8 +425,11 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
           return Math.abs(lx) > f.hx || Math.abs(lz) > f.hz
         })
       addProps(i, placement, (kitSpots.get('pradera') ?? []).filter(clear), turn)
-      const [fx, fz] = [footprints[0].x, footprints[0].z]
-      state.light = new Vector3(fx, 0.32, fz).applyMatrix4(around)
+      // The warm light hangs by the front door (+Z of the model), outside the walls: inside, it
+      // only lit the roof from below and leaked through the gaps between its sheets.
+      const f = footprints[0]
+      const out = f.hz + 0.08
+      state.light = new Vector3(f.x + out * f.sin, 0.2, f.z + out * f.cos).applyMatrix4(around)
     }
 
     // A fixed share of the village cells (shuffled per landscape) become homesteads, so every
