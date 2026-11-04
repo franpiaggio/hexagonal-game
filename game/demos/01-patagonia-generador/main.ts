@@ -168,7 +168,9 @@ function blendMood(dt: number) {
 
 // --- Camera: high, low-FOV perspective sells the miniature -------------------------------
 
-const camera = new PerspectiveCamera(22, window.innerWidth / window.innerHeight, 1, 600)
+// The camera never comes closer than ~15 units: a far-off near plane buys depth precision, so
+// the houses' trim and boards (laid a fraction of a millimetre off their walls) never z-fight.
+const camera = new PerspectiveCamera(22, window.innerWidth / window.innerHeight, 5, 400)
 const ELEVATION = (40 * Math.PI) / 180
 const AZIMUTH = (42 * Math.PI) / 180
 /** Viewer orbit around the board (scroll wheel / drag); eased towards the goal. */

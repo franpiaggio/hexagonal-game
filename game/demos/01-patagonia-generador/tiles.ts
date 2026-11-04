@@ -10,7 +10,6 @@ import {
   ConeGeometry,
   Color,
   CylinderGeometry,
-  DoubleSide,
   Group,
   InstancedMesh,
   Matrix4,
@@ -115,10 +114,51 @@ function bakeQuantization(mesh: Mesh) {
 const baseName = (name: string) => name.replace(/^Miniatura · /, '').replace(/\.\d+$/, '')
 
 /**
+ * Stacking order of a house's materials. The models lay trim, log ends and cladding flush on
+ * the walls (coplanar faces that z-fight, i.e. flicker); each rank lifts its faces a hair
+ * further out along their own normal, so the detail always wins over what it sits on.
+ */
+const HOUSE_LAYERS: [RegExp, number][] = [
+  [/^Testa/, 4],
+  [/^Carpinter/, 3],
+  [/^(Hierro|Vidrio)/, 2],
+  [/^(Alerce|Chapa)/, 1],
+]
+/** Lift per rank, in model metres (~0.8 mm of a tile: far below a pixel, above depth precision). */
+const HOUSE_LAYER_STEP = 0.012
+
+/**
  * Merges a house (a dozen flat-coloured PBR materials) into ONE geometry with each material's
  * colour baked into the vertices: one draw call per house model instead of twelve. Its normal
  * maps are dropped; at miniature scale they are below a pixel anyway.
  */
+/** Moves each triangle `lift` along its face normal; with `faceUp`, flips the down-facing ones. */
+function settleFaces(g: BufferGeometry, lift: number, faceUp: boolean) {
+  const pos = g.getAttribute('position')
+  const nor = g.getAttribute('normal')
+  const a = new Vector3()
+  const b = new Vector3()
+  const c = new Vector3()
+  const n = new Vector3()
+  for (let t = 0; t < pos.count; t += 3) {
+    a.fromBufferAttribute(pos, t)
+    b.fromBufferAttribute(pos, t + 1)
+    c.fromBufferAttribute(pos, t + 2)
+    n.subVectors(b, a).cross(c.clone().sub(a)).normalize()
+    if (faceUp && n.y < -0.05) {
+      // Swap two corners (winding) and mirror the shading normals.
+      pos.setXYZ(t + 1, c.x, c.y, c.z)
+      pos.setXYZ(t + 2, b.x, b.y, b.z)
+      const [nb, nc] = [new Vector3().fromBufferAttribute(nor, t + 1), new Vector3().fromBufferAttribute(nor, t + 2)]
+      nor.setXYZ(t, -nor.getX(t), -nor.getY(t), -nor.getZ(t))
+      nor.setXYZ(t + 1, -nc.x, -nc.y, -nc.z)
+      nor.setXYZ(t + 2, -nb.x, -nb.y, -nb.z)
+      n.negate()
+    }
+    if (lift) for (let k = 0; k < 3; k++) pos.setXYZ(t + k, pos.getX(t + k) + n.x * lift, pos.getY(t + k) + n.y * lift, pos.getZ(t + k) + n.z * lift)
+  }
+}
+
 function mergeHouse(root: Group): House {
   const pieces: BufferGeometry[] = []
   root.updateMatrixWorld(true)
@@ -131,11 +171,17 @@ function mergeHouse(root: Group): House {
     g.setAttribute('position', src.getAttribute('position'))
     g.setAttribute('normal', src.getAttribute('normal'))
     if (src.index) g.setIndex(src.index)
-    const tint = (mesh.material as MeshStandardMaterial).color
-    const colors = new Float32Array(g.getAttribute('position').count * 3)
+    const flat = g.index ? g.toNonIndexed() : g
+    const material = mesh.material as MeshStandardMaterial
+    const tint = material.color
+    const colors = new Float32Array(flat.getAttribute('position').count * 3)
     for (let i = 0; i < colors.length; i += 3) colors.set([tint.r, tint.g, tint.b], i)
-    g.setAttribute('color', new BufferAttribute(colors, 3))
-    pieces.push(g.index ? g.toNonIndexed() : g)
+    flat.setAttribute('color', new BufferAttribute(colors, 3))
+    const lift = (HOUSE_LAYERS.find(([re]) => re.test(material.name))?.[1] ?? 0) * HOUSE_LAYER_STEP
+    // Roof sheets are modelled facing down (Blender drew them double-sided). The camera is
+    // always above, so they are turned to face up instead of drawing every face twice.
+    settleFaces(flat, lift, material.name.startsWith('Chapa'))
+    pieces.push(flat)
   })
   const geometry = mergeGeometries(pieces)!
   geometry.scale(HOUSE_SCALE, HOUSE_SCALE, HOUSE_SCALE)
@@ -279,8 +325,6 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
   )
   const houses = await Promise.all(HOUSES.map(async (id) => mergeHouse((await loader.loadAsync(`${baseUrl}casas/${id}.glb`)).scene)))
   const houseMaterial = createSnowableMaterial(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }))
-  // Some roof sheets and eaves are single planes modelled for double-sided rendering.
-  houseMaterial.side = DoubleSide
   houseMaterial.name = 'casas'
 
   const baseGeometry = new CylinderGeometry(TILE_RADIUS * 0.999, TILE_RADIUS * 0.999, BASE_HEIGHT, 6)
