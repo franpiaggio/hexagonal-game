@@ -35,7 +35,7 @@ import {
   createWaterMaterial,
   mood,
 } from './materials'
-import { BASE_TOP, WATER_LEVEL } from './terrain'
+import { BASE_TOP, sealRim, WATER_LEVEL } from './terrain'
 import { createPropGeometries, scatterOnKit, type PropKind, type Spot } from './props'
 import { unpack, type CustomCells } from './terrain-pool'
 import type { Quality } from './quality'
@@ -48,7 +48,7 @@ const KIT: KitTile[] = ['pradera', 'bosque', 'caserio']
 const HOUSES = ['01_cabana_alerce', '02_chalet_balcon', '03_casa_piedra', '04_casa_en_l', '05_casa_galeria']
 const HOUSE_SCALE = 0.065
 /** Share of village cells built as a homestead (meadow + standalone houses) instead of the kit village. */
-const HOMESTEAD_SHARE = 0.55
+export const homestead = { share: 0.55 }
 /**
  * Where houses stand on a homestead, tile-local before the cell's rotation. They keep clear of
  * the meadow's lenga (around -0.87, -0.73) and of the hex rim.
@@ -318,6 +318,7 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
         bakeQuantization(mesh)
         const material = replace(mesh.material as Material)
         const isGround = material.name === 'suelo y pasto'
+        if (isGround) sealRim(mesh.geometry, TILE_RADIUS)
         list.push({ geometry: mesh.geometry, material, ground: isGround || material.name === 'agua' })
       })
       parts.set(id, list)
@@ -436,7 +437,7 @@ export async function loadKit(baseUrl: string, quality: Pick<Quality, 'props' | 
     // village mixes both looks instead of leaving it to chance.
     const villageCells = landscape.tiles.flatMap((t, i) => (t.tile === 'caserio' && !t.lite ? [i] : []))
     villageCells.sort((a, b) => hash(landscape.tiles[a].q, landscape.tiles[a].r, 7) - hash(landscape.tiles[b].q, landscape.tiles[b].r, 7))
-    const homesteads = new Set(villageCells.slice(0, Math.round(villageCells.length * HOMESTEAD_SHARE)))
+    const homesteads = new Set(villageCells.slice(0, Math.round(villageCells.length * homestead.share)))
 
     const tiles: TileState[] = landscape.tiles.map((placement, i) => {
       const [x, z] = axialToWorld(placement.q, placement.r, TILE_RADIUS)

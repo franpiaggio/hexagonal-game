@@ -11,6 +11,35 @@ export const WATER_LEVEL = -0.045
 export const BASE_TOP = -0.06
 const BED_DEPTH = -0.14
 
+/**
+ * Neighbouring cells are separate meshes, so their shared edge is not watertight: hairline
+ * pixels fall between the two surfaces and show the soil wall underneath as a dark line.
+ * Each cell's top rim reaches this far past the hexagon, so neighbours overlap instead.
+ */
+export const SEAM_OVERLAP = 0.004
+
+/** Push a cell's top-rim vertices (on the hexagon, above `below`) outward by SEAM_OVERLAP. */
+export function sealRim(geometry: BufferGeometry, R: number, below = -0.005) {
+  const pos = geometry.getAttribute('position')
+  const apothem = (R * Math.sqrt(3)) / 2
+  const grow = (apothem + SEAM_OVERLAP) / apothem
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i)
+    const z = pos.getZ(i)
+    let ap = 0
+    for (let k = 0; k < 6; k++) ap = Math.max(ap, x * Math.cos((k * Math.PI) / 3) + z * Math.sin((k * Math.PI) / 3))
+    if (apothem - ap < 0.0005 && pos.getY(i) > below) {
+      pos.setX(i, x * grow)
+      pos.setZ(i, z * grow)
+    }
+  }
+  pos.needsUpdate = true
+}
+
+/** How far from a kit cell's rim the water's sand bank must end (sand fades out by s = 0.22). */
+const SHORE_CLEARANCE = 0.3
+const HEX_NORMALS = Array.from({ length: 6 }, (_, k) => [Math.cos((k * Math.PI) / 3), Math.sin((k * Math.PI) / 3)])
+
 const GRASS = new Color('#8e9a75')
 const SAND = new Color('#b9ae8c')
 const MUD = new Color('#6b6250')
@@ -37,6 +66,10 @@ export function createField(landscape: Landscape, R: number) {
   }))
   const lakes = landscape.water.lakes.map((b) => ({ x: b.x * R, z: b.z * R, r: b.r * R }))
   const nonMountain: [number, number][] = []
+  // Kit cells (meadow, forest, village) are flat grass to their very rim, so water and its sand
+  // bank must stay clear of their edges or the shore ends in a straight cut along the hexagon.
+  const kitCells: [number, number][] = []
+  for (const t of landscape.tiles) if (t.tile !== 'agua' && t.tile !== 'montana') kitCells.push(axialToWorld(t.q, t.r, R))
   // One peak per mountain cell, jittered and of random height: neighbouring peaks merge into ranges.
   const peaks: { x: number; z: number; h: number; s: number }[] = []
   for (const t of landscape.tiles) {
@@ -134,8 +167,25 @@ export function createField(landscape: Landscape, R: number) {
     return Math.pow(m, 1.4) * Math.max(0, body)
   }
 
+  const apothem = (R * Math.sqrt(3)) / 2
+  /** Distance to the nearest kit cell (negative inside one); only cells within reach count. */
+  function kitDistance(x: number, z: number) {
+    let d = Infinity
+    for (const [cx, cz] of kitCells) {
+      const dx = x - cx
+      const dz = z - cz
+      if (dx * dx + dz * dz > (R + SHORE_CLEARANCE) ** 2) continue
+      let e = -Infinity
+      for (let k = 0; k < 6; k++) e = Math.max(e, dx * HEX_NORMALS[k][0] + dz * HEX_NORMALS[k][1])
+      d = Math.min(d, e - apothem)
+    }
+    return d
+  }
+
   function sample(x: number, z: number) {
-    const s = waterSdf(x, z)
+    // Lift the shore field near kit cells (smooth max, so the hexagon never shows as a corner):
+    // full grass, no sand and no carve where they meet.
+    const s = -smin(-waterSdf(x, z), kitDistance(x, z) - SHORE_CLEARANCE, 0.6)
     const hm = mountainHeight(x, z)
     const carve = smoothstep(0.1, -0.28, s)
     const y = hm + (BED_DEPTH - hm) * carve + (fbm(x * 2.2, z * 2.2, seed + 1, 2) - 0.5) * 0.02 * (1 - carve)
@@ -252,6 +302,7 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
   const ground = new BufferGeometry()
   ground.setAttribute('position', new BufferAttribute(pos, 3))
   ground.setIndex(tris)
+  sealRim(ground, R, -Infinity)
   // Interior normals come from the mesh itself; only border vertices ask the field, so
   // neighbouring cells agree exactly where they meet (no crease) at a fraction of the cost.
   ground.computeVertexNormals()
@@ -331,6 +382,7 @@ export function buildCustomTile(field: Field, cx: number, cz: number, R: number,
     // Real water column under each vertex: drives colour, transparency and foam.
     water.setAttribute('depth', new BufferAttribute(heights.map((h) => Math.max(0, WATER_LEVEL - h)), 1))
     water.setIndex(tris)
+    sealRim(water, R, -Infinity)
     water.computeVertexNormals()
     if (waterWallPos.length) {
       waterWalls = new BufferGeometry()
