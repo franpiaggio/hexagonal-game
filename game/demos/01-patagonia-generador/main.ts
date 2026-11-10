@@ -37,7 +37,7 @@ import {
 import { ao } from 'three/addons/tsl/display/GTAONode.js'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js'
-import { generateLandscape, specForIndex } from './generator'
+import { generateLandscape, specForIndex, type LandscapeSpec } from './generator'
 import { mood as moodUniforms } from './materials'
 import { MOODS, type Mood } from './moods'
 import { buildCustomCells, startTerrainWorkers } from './terrain-pool'
@@ -127,6 +127,8 @@ const cloneMood = (m: Mood): Mood => {
   return out
 }
 let targetMood: Mood = MOODS.dia
+/** Debug override: while set, every landscape eases to this mood instead of its own. */
+let moodLock: Mood | null = null
 let current: Mood = cloneMood(targetMood)
 const bloomStrength = uniform(0.05)
 
@@ -134,7 +136,7 @@ function blendMood(dt: number) {
   // Fast: the new season must be in place before the next board rises out of the void.
   const a = 1 - Math.exp(-dt * 4.5)
   const m = current as Record<string, unknown>
-  const t = targetMood as Record<string, unknown>
+  const t = (moodLock ?? targetMood) as Record<string, unknown>
   for (const k of Object.keys(t)) {
     const from = m[k]
     const to = t[k]
@@ -171,8 +173,9 @@ function blendMood(dt: number) {
 // The camera never comes closer than ~15 units: a far-off near plane buys depth precision, so
 // the houses' trim and boards (laid a fraction of a millimetre off their walls) never z-fight.
 const camera = new PerspectiveCamera(22, window.innerWidth / window.innerHeight, 5, 400)
-const ELEVATION = (40 * Math.PI) / 180
-const AZIMUTH = (42 * Math.PI) / 180
+/** Camera rig, in degrees; live-tunable from the `?debug` panel. */
+const view = { elevation: 40, azimuth: 42, sway: 0.07, framing: ZOOM }
+const DEG = Math.PI / 180
 /** Viewer orbit around the board (scroll wheel / drag); eased towards the goal. */
 let yaw = 0
 let yawGoal = 0
@@ -189,7 +192,7 @@ function distanceFor(boardRadius: number, zoom = 1) {
   const halfFov = (camera.fov * Math.PI) / 360
   const fitV = (boardRadius * 0.95) / Math.tan(halfFov)
   const fitH = (boardRadius * 1.0) / (Math.tan(halfFov) * camera.aspect)
-  return Math.max(fitV * 0.8, fitH) * ZOOM * zoom
+  return Math.max(fitV * 0.8, fitH) * view.framing * zoom
 }
 
 /**
@@ -201,11 +204,11 @@ function distanceInside(cells: number, R: number) {
   const ray = new Vector3()
   const hit = new Vector3()
   const fits = (d: number) => {
-    for (const az of [AZIMUTH + yawGoal - 0.08, AZIMUTH + yawGoal + 0.08]) {
+    for (const az of [view.azimuth * DEG + yawGoal - 0.08, view.azimuth * DEG + yawGoal + 0.08]) {
       probe.position.set(
-        targetGoal.x + Math.cos(ELEVATION) * Math.cos(az) * d,
-        targetGoal.y + Math.sin(ELEVATION) * d,
-        targetGoal.z + Math.cos(ELEVATION) * Math.sin(az) * d,
+        targetGoal.x + Math.cos(view.elevation * DEG) * Math.cos(az) * d,
+        targetGoal.y + Math.sin(view.elevation * DEG) * d,
+        targetGoal.z + Math.cos(view.elevation * DEG) * Math.sin(az) * d,
       )
       probe.lookAt(targetGoal)
       probe.updateMatrixWorld()
@@ -238,6 +241,16 @@ const focalLength = uniform(6)
 /** The focus band eases between landscapes instead of snapping. */
 let focalGoal = 6
 const bokehScale = uniform(3.6)
+/** Display grade (live-tunable from `?debug`). */
+const grade = {
+  contrast: uniform(1.08),
+  saturation: uniform(1.08),
+  vignette: uniform(0.18),
+  grain: uniform(0.016),
+  ao: uniform(0.75),
+  /** Multiplies the automatic focus band: < 1 is a stronger miniature blur. */
+  focal: 1,
+}
 
 const pipeline = new RenderPipeline(renderer)
 pipeline.outputColorTransform = false
@@ -256,12 +269,12 @@ if (quality.ao > 0) {
   aoPass.radius.value = 0.35
   aoPass.thickness.value = 0.6
   const occlusion = nodeObject(aoPass).getTextureNode().r
-  occluded = vec4(sceneColor.rgb.mul(mix(float(1), occlusion, 0.75)), sceneColor.a)
+  occluded = vec4(sceneColor.rgb.mul(mix(float(1), occlusion, grade.ao)), sceneColor.a)
 }
 
 const vignette = smoothstep(0.38, 1.0, length(screenUV.sub(0.5).mul(vec2(1.2, 1.0))))
 // hash() takes a scalar: fold both screen axes and time into one seed (a vec2 would only use x → stripes).
-const grain = hash(screenUV.x.mul(1913.7).add(screenUV.y.mul(7919.3)).add(time.mul(13.17))).sub(0.5).mul(0.016)
+const grain = hash(screenUV.x.mul(1913.7).add(screenUV.y.mul(7919.3)).add(time.mul(13.17))).sub(0.5).mul(grade.grain)
 
 /** Lens + grade over a scene image. Built twice when AO may be dropped at runtime. */
 function finish(source: ReturnType<typeof vec4>) {
@@ -271,9 +284,9 @@ function finish(source: ReturnType<typeof vec4>) {
   const hdr = blurred.add(glow.mul(bloomStrength))
   // Tone map first, then grade in display space: miniature photos read punchy and contrasty.
   const display = renderOutput(hdr)
-  const contrasted = display.rgb.sub(0.5).mul(1.08).add(0.5)
-  const graded = saturation(contrasted, 1.08)
-  return { blurred, hdr, out: vec4(graded.mul(mix(float(1), float(0.82), vignette)).add(vec3(grain)), 1) }
+  const contrasted = display.rgb.sub(0.5).mul(grade.contrast).add(0.5)
+  const graded = saturation(contrasted, grade.saturation)
+  return { blurred, hdr, out: vec4(graded.mul(mix(float(1), float(1).sub(grade.vignette), vignette)).add(vec3(grain)), 1) }
 }
 const { blurred, hdr, out: finalOutput } = finish(occluded)
 pipeline.outputNode = finalOutput
@@ -332,10 +345,12 @@ const boardRadiusOf = (board: Board) => Math.max(...board.tiles.map((t) => Math.
 let frame = () => distanceGoal
 
 let buildToken = 0
+let liveSpec: LandscapeSpec | null = null
 async function showLandscape(i: number) {
   const token = ++buildToken
   const requested = now()
   const composed = generateLandscape(specForIndex(i))
+  liveSpec = composed.spec
   const PAD = 3
   const landscape = fullBleed ? padLandscape(composed, PAD) : composed
   // Terrain cells build in workers while the old board sinks; a newer click supersedes this one.
@@ -613,7 +628,7 @@ current = cloneMood(targetMood)
 distance = distanceGoal * 1.15
 focus.copy(focusGoal)
 target.copy(targetGoal)
-focalLength.value = focalGoal
+focalLength.value = focalGoal * grade.focal
 const forward = new Vector3()
 
 // Fade the HTML loader out once the first landscape has actually been drawn.
@@ -624,6 +639,8 @@ const loader = document.getElementById('loader')
 // Past the resolution floor, a weak or overloaded device sheds effects, then frame rate: the
 // motion keeps its speed at 30 fps (everything is driven by the clock, not by frame count).
 let frameInterval = 0
+/** Set by the `?debug` panel to sample each rendered frame. */
+let debugFrame: (() => void) | null = null
 let lastRendered = 0
 const governor = createGovernor(quality, (dpr) => renderer.setPixelRatio(dpr), [
   () => {
@@ -660,13 +677,13 @@ renderer.setAnimationLoop(() => {
   zoom += (zoomGoal - zoom) * (1 - Math.exp(-dt * 8))
   focus.lerp(focusGoal, 1 - Math.exp(-dt * 1.2))
   target.lerp(targetGoal, 1 - Math.exp(-dt * 1.2))
-  focalLength.value += (focalGoal - focalLength.value) * (1 - Math.exp(-dt * 1.2))
+  focalLength.value += (focalGoal * grade.focal - focalLength.value) * (1 - Math.exp(-dt * 1.2))
   yaw += (yawGoal - yaw) * (1 - Math.exp(-dt * 6))
-  const az = AZIMUTH + yaw + Math.sin(t * 0.06) * 0.07
+  const az = view.azimuth * DEG + yaw + Math.sin(t * 0.06) * view.sway
   camera.position.set(
-    target.x + Math.cos(ELEVATION) * Math.cos(az) * distance * zoom,
-    target.y + Math.sin(ELEVATION) * distance * zoom,
-    target.z + Math.cos(ELEVATION) * Math.sin(az) * distance * zoom,
+    target.x + Math.cos(view.elevation * DEG) * Math.cos(az) * distance * zoom,
+    target.y + Math.sin(view.elevation * DEG) * distance * zoom,
+    target.z + Math.cos(view.elevation * DEG) * Math.sin(az) * distance * zoom,
   )
   camera.lookAt(target)
   // Focal plane through the point of interest, measured along the view axis.
@@ -681,4 +698,59 @@ renderer.setAnimationLoop(() => {
   disposeFinished(t)
   updateWindowLights()
   pipeline.render()
+  debugFrame?.()
 })
+
+// --- Debug panel: `?debug` only, loaded on demand (never part of the normal bundle path) -----
+
+if (params.has('debug')) {
+  void import('./debug').then(({ mountDebug }) =>
+    mountDebug({
+      renderer,
+      camera,
+      sun,
+      quality,
+      governor,
+      view,
+      grade,
+      bokehScale,
+      aoPass: () => aoPass,
+      moods: MOODS,
+      liveMood: () => targetMood,
+      lockMood: (m) => {
+        moodLock = m
+      },
+      spec: () => liveSpec,
+      index: () => index,
+      fullBleed: () => fullBleed,
+      autoplay: () => autoplay,
+      setAutoplay: (on) => {
+        autoplay = on
+        lastAdvance = now()
+      },
+      goTo: (i) => {
+        index = i - 1
+        next()
+      },
+      rebuild: () => {
+        index--
+        next()
+      },
+      toggleFullBleed: () => {
+        fullBleed = !fullBleed
+        if (fullBleed) zoomGoal = Math.min(zoomGoal, 1)
+        index--
+        next()
+      },
+      reframe: () => {
+        distanceGoal = frame()
+      },
+      redrawShadows: () => {
+        sun.shadow.needsUpdate = true
+      },
+      onFrame: (fn) => {
+        debugFrame = fn
+      },
+    }),
+  )
+}
