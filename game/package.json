@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "assets:patagonia": "./scripts/build-patagonia-assets.sh"
+    "assets:patagonia": "./scripts/build-patagonia-assets.sh",
+    "assets:atlas": "bash scripts/build-atlas-assets.sh",
+    "test:atlas": "node --experimental-strip-types --test scripts/atlas-generator.test.ts"
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.5.1",

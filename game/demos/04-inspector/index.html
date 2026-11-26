@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inspector de piezas</title>
+  </head>
+  <body>
+    <aside class="panel" id="panel">
+      <header>
+        <a href="../../" class="back">← Inicio</a>
+        <h1>Inspector de piezas</h1>
+      </header>
+
+      <section>
+        <h2>Pieza</h2>
+        <div id="pieces" class="pieces"></div>
+      </section>
+
+      <section>
+        <h2>Vista</h2>
+        <label><input type="checkbox" id="opt-wire" /> Wireframe</label>
+        <label><input type="checkbox" id="opt-edges" checked /> Bordes y tipos (0–5)</label>
+        <label><input type="checkbox" id="opt-grid" checked /> Grilla y ejes</label>
+        <label><input type="checkbox" id="opt-box" /> Caja contenedora</label>
+        <label><input type="checkbox" id="opt-dark" /> Fondo oscuro</label>
+        <div class="row">
+          <span>Giro</span>
+          <button id="rot-ccw" type="button" aria-label="Girar 60° a la izquierda">⟲</button>
+          <b id="rot">0</b>
+          <button id="rot-cw" type="button" aria-label="Girar 60° a la derecha">⟳</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Datos</h2>
+        <dl id="stats" class="stats"></dl>
+      </section>
+
+      <section class="grow">
+        <h2>Objetos <span class="hint">click: aislar · casilla: mostrar</span></h2>
+        <ul id="objects" class="objects"></ul>
+      </section>
+    </aside>
+
+    <main class="view">
+      <canvas id="view"></canvas>
+      <div id="labels"></div>
+      <div id="hover" class="hover" hidden></div>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

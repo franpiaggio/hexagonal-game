@@ -1,0 +1,61 @@
+{
+  "assets": [
+    {
+      "name": "leaf_0",
+      "vertices": 1038,
+      "triangles": 916
+    },
+    {
+      "name": "fir_0",
+      "vertices": 8380,
+      "triangles": 5435
+    },
+    {
+      "name": "fir_1",
+      "vertices": 8409,
+      "triangles": 5523
+    },
+    {
+      "name": "cabin",
+      "vertices": 12236,
+      "triangles": 6380
+    },
+    {
+      "name": "chalet",
+      "vertices": 18020,
+      "triangles": 9272
+    },
+    {
+      "name": "stone",
+      "vertices": 2054,
+      "triangles": 1066
+    },
+    {
+      "name": "inn",
+      "vertices": 5690,
+      "triangles": 2902
+    },
+    {
+      "name": "shed",
+      "vertices": 3374,
+      "triangles": 1790
+    },
+    {
+      "name": "chapel",
+      "vertices": 2278,
+      "triangles": 1190
+    }
+  ],
+  "source": "Patagonia project",
+  "architecture": "Custom geometry from the approved Blender library; vertex-color materials",
+  "vegetation": "Poly Haven fir_tree_01 LOD2, complete shoot thinning and decimated wood; procedural lenga",
+  "textures": "Poly Haven fir_tree_01, grass_ground, forest_ground_04, gravel_road and gravelly_sand (CC0); procedural lenga",
+  "sources": [
+    "https://polyhaven.com/a/fir_tree_01",
+    "https://polyhaven.com/a/grass_ground",
+    "https://polyhaven.com/a/forest_ground_04",
+    "https://polyhaven.com/a/gravel_road",
+    "https://polyhaven.com/a/gravelly_sand",
+    "https://polyhaven.com/license"
+  ]
+}

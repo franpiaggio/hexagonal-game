@@ -4,26 +4,55 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hexagonal · demos</title>
+    <title>Hexagonal · inicio</title>
     <style>
-      :root { color-scheme: light dark; --bg: #f1eee8; --fg: #2b2620; --muted: #8a8275; }
-      @media (prefers-color-scheme: dark) { :root { --bg: #1a1815; --fg: #ece6dc; --muted: #8f877a; } }
+      :root { color-scheme: light dark; --bg: #f1eee8; --card: #fbf9f4; --fg: #2b2620; --muted: #8a8275; --line: #e0d9cb; --accent: #476d5d; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #1a1815; --card: #23201c; --fg: #ece6dc; --muted: #8f877a; --line: #39342d; --accent: #7fa492; } }
       body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--fg); font: 16px/1.5 ui-sans-serif, system-ui, sans-serif; }
-      main { max-width: 640px; margin: 0 auto; padding: 48px 16px; }
-      h1 { font-size: 20px; font-weight: 600; margin: 0 0 24px; }
+      main { max-width: 880px; margin: 0 auto; padding: 48px 16px; }
+      h1 { font-size: 22px; font-weight: 650; margin: 0 0 4px; }
+      .lead { color: var(--muted); margin: 0 0 28px; }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+      .card { display: flex; flex-direction: column; gap: 6px; padding: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+      .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+      .card .step { color: var(--accent); font-size: 13px; font-weight: 600; }
+      .card .name { font-size: 18px; font-weight: 600; }
+      .card .desc { color: var(--muted); font-size: 14px; }
+      h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 40px 0 8px; font-weight: 600; }
       ol { list-style: none; padding: 0; margin: 0; }
-      li { border-top: 1px solid color-mix(in srgb, var(--muted) 35%, transparent); }
-      a { display: flex; gap: 16px; padding: 14px 0; color: inherit; text-decoration: none; }
-      a:hover .name { text-decoration: underline; }
+      li { border-top: 1px solid var(--line); }
+      li a { display: flex; gap: 16px; padding: 12px 0; color: inherit; text-decoration: none; }
+      li a:hover .name { text-decoration: underline; }
       .num { color: var(--muted); font-variant-numeric: tabular-nums; }
-      .desc { color: var(--muted); font-size: 14px; }
+      li .desc { color: var(--muted); font-size: 14px; }
     </style>
   </head>
   <body>
     <main>
-      <h1>Hexagonal · demos</h1>
+      <h1>Hexagonal · Patagonia en miniatura</h1>
+      <p class="lead">Piezas del kit, el generador original y el prototipo de juego.</p>
+
+      <div class="cards">
+        <a class="card" href="./demos/04-inspector/">
+          <span class="step">1 · Inspector</span>
+          <span class="name">Piezas por separado</span>
+          <span class="desc">Cada ficha y casa sola: sus objetos, materiales, triángulos y tipos de borde. Aislar, wireframe, giro.</span>
+        </a>
+        <a class="card" href="./demos/01-patagonia-generador/">
+          <span class="step">2 · Demo original</span>
+          <span class="name">Patagonia · generador</span>
+          <span class="desc">Paisajes procedurales con tilt-shift y cinco climas. Click para el siguiente.</span>
+        </a>
+        <a class="card" href="./demos/03-pila-de-fichas/">
+          <span class="step">3 · Juego</span>
+          <span class="name">Pila de fichas</span>
+          <span class="desc">Sacás fichas del kit, las girás y armás el tablero. Puntos por bordes que coinciden.</span>
+        </a>
+      </div>
+
+      <h2>Otras demos</h2>
       <ol>
-        <li><a href="./demos/01-patagonia-generador/"><span class="num">01</span><span><span class="name">Patagonia · generador</span><br /><span class="desc">Paisajes procedurales con tilt-shift. Click para generar el siguiente.</span></span></a></li>
+        <li><a href="./demos/02-atlas-patagonico/"><span class="num">02</span><span><span class="name">Atlas patagónico · pequeños mundos</span><br /><span class="desc">Seis paisajes animados, caseríos, bosque y agua. Cámara libre y efecto miniatura.</span></span></a></li>
         <li><a href="./demos/00-hex-grid-base/"><span class="num">00</span><span><span class="name">Hex grid base</span><br /><span class="desc">Escena inicial del scaffold.</span></span></a></li>
       </ol>
     </main>
