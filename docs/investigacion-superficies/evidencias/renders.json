@@ -1,0 +1,41 @@
+[
+  {
+    "file": "01_dof_y_denoise.png",
+    "dof": true,
+    "denoise": true,
+    "samples": 128,
+    "seconds": 50.39,
+    "border": [
+      0.23,
+      0.75,
+      0.22,
+      0.8
+    ]
+  },
+  {
+    "file": "02_sin_dof.png",
+    "dof": false,
+    "denoise": true,
+    "samples": 128,
+    "seconds": 49.45,
+    "border": [
+      0.23,
+      0.75,
+      0.22,
+      0.8
+    ]
+  },
+  {
+    "file": "03_sin_dof_sin_denoise.png",
+    "dof": false,
+    "denoise": false,
+    "samples": 128,
+    "seconds": 48.59,
+    "border": [
+      0.23,
+      0.75,
+      0.22,
+      0.8
+    ]
+  }
+]

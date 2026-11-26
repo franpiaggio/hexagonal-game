@@ -1,0 +1,1498 @@
+{
+  "source": "models/vegetacion_patagonica/escenas/02_caserio_del_cipres.blend",
+  "source_sha256": "a545dae7d87fe97710bf0129cdce70ceb8a967120268b4f2fa4873a94d8b357e",
+  "camera": "Cámara · detalle de la ladera",
+  "resolution": [
+    2048,
+    1152
+  ],
+  "lens_mm": 105.0,
+  "fstop": 5.599999904632568,
+  "exposure": 0.3499999940395355,
+  "look": "AgX - Medium High Contrast",
+  "view_transform": "AgX",
+  "cycles": {
+    "samples": 96,
+    "min_samples": 24,
+    "adaptive_threshold": 0.02500000037252903,
+    "denoising": true,
+    "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+    "denoising_prefilter": "ACCURATE"
+  },
+  "lights": [
+    {
+      "name": "Reflejo suave de cielo sobre el agua",
+      "type": "AREA",
+      "energy": 7.0,
+      "color": [
+        0.8100000023841858,
+        0.8999999761581421,
+        1.0
+      ]
+    },
+    {
+      "name": "Sol · 03_caserio_del_camino",
+      "type": "SUN",
+      "energy": 1.7999999523162842,
+      "color": [
+        1.0,
+        0.9599999785423279,
+        0.8799999952316284
+      ]
+    }
+  ],
+  "rock_count": 50,
+  "unique_rock_meshes": 4,
+  "rock_size_x_m": {
+    "min": 1.98476,
+    "median": 3.60258,
+    "max": 6.32407
+  },
+  "rock_size_z_m": {
+    "min": 1.17049,
+    "median": 2.01166,
+    "max": 3.77153
+  },
+  "rock_pixel_width": {
+    "min": 20.95074,
+    "median": 41.75735,
+    "max": 80.40573
+  },
+  "terrain": {
+    "vertices": 231361,
+    "polygons": 460800,
+    "grid_x_step_m": {
+      "min": 1.16665,
+      "median": 1.16667,
+      "max": 1.16667
+    },
+    "grid_y_step_m": {
+      "min": 1.16665,
+      "median": 1.16667,
+      "max": 1.16667
+    },
+    "modifiers": [],
+    "world_scale": [
+      0.03999999910593033,
+      0.03999999910593033,
+      0.03999999910593033
+    ]
+  },
+  "pixels_per_meter": [
+    {
+      "point_world": [
+        -0.20000000298023224,
+        0.1599999964237213,
+        0.035999998450279236
+      ],
+      "x_pixels_per_meter": 9.755251509446488,
+      "y_pixels_per_meter": 7.170125777073761
+    },
+    {
+      "point_world": [
+        0.0,
+        0.0,
+        0.00800000037997961
+      ],
+      "x_pixels_per_meter": 11.37037524853023,
+      "y_pixels_per_meter": 8.813140602365827
+    }
+  ],
+  "rocks": [
+    {
+      "name": "Afloramiento · 1",
+      "dimensions_m": [
+        3.221422666683793,
+        2.8813215903937817,
+        2.0804163068532944
+      ],
+      "projected_bbox_px": [
+        39.88214111328125,
+        36.50469970703125
+      ],
+      "local_position": [
+        -4.920765399932861,
+        3.6830027103424072,
+        0.7877575755119324
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 2",
+      "dimensions_m": [
+        3.7555403541773558,
+        3.3104487229138613,
+        3.281653393059969
+      ],
+      "projected_bbox_px": [
+        45.38677978515625,
+        58.1435546875
+      ],
+      "local_position": [
+        -5.112707138061523,
+        2.4927501678466797,
+        0.5689287781715393
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 3",
+      "dimensions_m": [
+        2.679344266653061,
+        1.6938940389081836,
+        1.3647915329784155
+      ],
+      "projected_bbox_px": [
+        20.95074462890625,
+        30.5447998046875
+      ],
+      "local_position": [
+        -5.29603910446167,
+        3.1671481132507324,
+        0.7458609938621521
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 4",
+      "dimensions_m": [
+        3.0763973481953144,
+        2.2514124866575003,
+        1.3157896464690566
+      ],
+      "projected_bbox_px": [
+        34.0540771484375,
+        35.75787353515625
+      ],
+      "local_position": [
+        -4.714776992797852,
+        4.3118743896484375,
+        0.8860130310058594
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 5",
+      "dimensions_m": [
+        3.6775132175534964,
+        2.9916937928646803,
+        1.8585646757856011
+      ],
+      "projected_bbox_px": [
+        50.90704345703125,
+        45.73065185546875
+      ],
+      "local_position": [
+        -4.099818229675293,
+        3.0425589084625244,
+        0.5565717220306396
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 6",
+      "dimensions_m": [
+        3.364116884768009,
+        2.008001087233424,
+        1.392087317071855
+      ],
+      "projected_bbox_px": [
+        35.3167724609375,
+        36.6103515625
+      ],
+      "local_position": [
+        -4.825549602508545,
+        2.977213144302368,
+        0.6385841965675354
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 7",
+      "dimensions_m": [
+        3.25469346717,
+        2.728076418861747,
+        2.3945271968841553
+      ],
+      "projected_bbox_px": [
+        33.4365234375,
+        43.28271484375
+      ],
+      "local_position": [
+        -2.3206980228424072,
+        4.144783020019531,
+        0.5566548109054565
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 8",
+      "dimensions_m": [
+        3.885661019012332,
+        2.834519138559699,
+        1.9660154357552528
+      ],
+      "projected_bbox_px": [
+        46.6947021484375,
+        42.14263916015625
+      ],
+      "local_position": [
+        -3.768934965133667,
+        5.17301607131958,
+        0.8531482219696045
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 9",
+      "dimensions_m": [
+        5.344472359865904,
+        3.3121381420642138,
+        2.196624642238021
+      ],
+      "projected_bbox_px": [
+        61.86474609375,
+        59.17523193359375
+      ],
+      "local_position": [
+        -6.576781749725342,
+        2.357846736907959,
+        0.6930330395698547
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 10",
+      "dimensions_m": [
+        5.50549803301692,
+        3.474083263427019,
+        2.593044191598892
+      ],
+      "projected_bbox_px": [
+        64.500244140625,
+        62.588623046875
+      ],
+      "local_position": [
+        -6.926741600036621,
+        6.02163553237915,
+        1.359615445137024
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 11",
+      "dimensions_m": [
+        3.672777209430933,
+        2.468761522322893,
+        1.6793999820947647
+      ],
+      "projected_bbox_px": [
+        31.3642578125,
+        35.724853515625
+      ],
+      "local_position": [
+        -5.284211158752441,
+        4.420034408569336,
+        0.9923349022865295
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 12",
+      "dimensions_m": [
+        6.128270179033279,
+        3.789750160649419,
+        2.7301739901304245
+      ],
+      "projected_bbox_px": [
+        74.658935546875,
+        68.197509765625
+      ],
+      "local_position": [
+        -2.702352285385132,
+        4.052455425262451,
+        0.5727867484092712
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 13",
+      "dimensions_m": [
+        6.324073765426874,
+        3.975218627601862,
+        3.0182520858943462
+      ],
+      "projected_bbox_px": [
+        80.40573120117188,
+        76.21484375
+      ],
+      "local_position": [
+        -6.56564998626709,
+        2.291818141937256,
+        0.673577070236206
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 14",
+      "dimensions_m": [
+        2.5094354059547186,
+        2.0893432665616274,
+        1.8073783721774817
+      ],
+      "projected_bbox_px": [
+        33.0291748046875,
+        35.7359619140625
+      ],
+      "local_position": [
+        -1.5786232948303223,
+        5.132712364196777,
+        0.5761412382125854
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 15",
+      "dimensions_m": [
+        2.868254669010639,
+        2.557141939178109,
+        1.9054795848205686
+      ],
+      "projected_bbox_px": [
+        39.866455078125,
+        38.67230224609375
+      ],
+      "local_position": [
+        -4.119631290435791,
+        4.270777225494385,
+        0.7595028877258301
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 16",
+      "dimensions_m": [
+        3.2149702310562134,
+        2.204683143645525,
+        2.163187600672245
+      ],
+      "projected_bbox_px": [
+        41.65081787109375,
+        32.0499267578125
+      ],
+      "local_position": [
+        -5.276383876800537,
+        3.4967799186706543,
+        0.8176424503326416
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 17",
+      "dimensions_m": [
+        4.820521920919418,
+        3.1331595964729786,
+        2.9802427161484957
+      ],
+      "projected_bbox_px": [
+        49.182373046875,
+        43.38494873046875
+      ],
+      "local_position": [
+        -2.7342281341552734,
+        5.219019889831543,
+        0.6698963046073914
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 18",
+      "dimensions_m": [
+        5.476390942931175,
+        3.9745094254612923,
+        3.7715272046625614
+      ],
+      "projected_bbox_px": [
+        60.78228759765625,
+        58.96484375
+      ],
+      "local_position": [
+        -6.526413440704346,
+        5.894539833068848,
+        1.3052834272384644
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 19",
+      "dimensions_m": [
+        2.7759613003581762,
+        2.366450848057866,
+        1.8664345843717456
+      ],
+      "projected_bbox_px": [
+        38.97540283203125,
+        38.343994140625
+      ],
+      "local_position": [
+        -3.660916328430176,
+        2.7117745876312256,
+        0.5016551613807678
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 20",
+      "dimensions_m": [
+        5.35253994166851,
+        3.5707675851881504,
+        2.5884637143462896
+      ],
+      "projected_bbox_px": [
+        65.453369140625,
+        56.4234619140625
+      ],
+      "local_position": [
+        -4.037727355957031,
+        3.026987314224243,
+        0.5514407753944397
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 21",
+      "dimensions_m": [
+        3.5323777701705694,
+        2.1675408352166414,
+        1.5656700124964118
+      ],
+      "projected_bbox_px": [
+        25.501953125,
+        36.96453857421875
+      ],
+      "local_position": [
+        -5.895516395568848,
+        3.7424027919769287,
+        0.9413776993751526
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 22",
+      "dimensions_m": [
+        1.9847580697387457,
+        1.7052775947377086,
+        1.4991615898907185
+      ],
+      "projected_bbox_px": [
+        25.51409912109375,
+        23.42303466796875
+      ],
+      "local_position": [
+        -5.015116214752197,
+        2.580744504928589,
+        0.5926967263221741
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 23",
+      "dimensions_m": [
+        2.910164650529623,
+        2.4533369578421116,
+        1.935603329911828
+      ],
+      "projected_bbox_px": [
+        40.1954345703125,
+        40.87274169921875
+      ],
+      "local_position": [
+        -5.378958702087402,
+        2.4132227897644043,
+        0.6004813313484192
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 24",
+      "dimensions_m": [
+        2.862239722162485,
+        2.051927614957094,
+        1.2248412240296602
+      ],
+      "projected_bbox_px": [
+        35.12060546875,
+        30.37982177734375
+      ],
+      "local_position": [
+        -5.551883697509766,
+        5.303863048553467,
+        1.134112000465393
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 25",
+      "dimensions_m": [
+        3.8962981197983027,
+        3.094625659286976,
+        1.9364936742931604
+      ],
+      "projected_bbox_px": [
+        47.42919921875,
+        45.1234130859375
+      ],
+      "local_position": [
+        -3.995670795440674,
+        4.689727306365967,
+        0.8155247569084167
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 26",
+      "dimensions_m": [
+        4.882929380983114,
+        3.7642118986696005,
+        2.4516319390386343
+      ],
+      "projected_bbox_px": [
+        53.6748046875,
+        57.75848388671875
+      ],
+      "local_position": [
+        -1.3559162616729736,
+        5.58699893951416,
+        0.5683377385139465
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 27",
+      "dimensions_m": [
+        2.8751040808856487,
+        1.979707507416606,
+        1.9187988946214318
+      ],
+      "projected_bbox_px": [
+        22.906158447265625,
+        36.1947021484375
+      ],
+      "local_position": [
+        -6.663215637207031,
+        3.5549204349517822,
+        0.9340061545372009
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 28",
+      "dimensions_m": [
+        4.073508083820343,
+        2.938094548881054,
+        2.0572980865836143
+      ],
+      "projected_bbox_px": [
+        51.2113037109375,
+        48.85906982421875
+      ],
+      "local_position": [
+        -3.025303840637207,
+        4.208309173583984,
+        0.6085605025291443
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 29",
+      "dimensions_m": [
+        3.2701552845537663,
+        2.4683931842446327,
+        2.1849118638783693
+      ],
+      "projected_bbox_px": [
+        42.05426025390625,
+        46.88092041015625
+      ],
+      "local_position": [
+        -3.8508388996124268,
+        3.367241382598877,
+        0.5818249583244324
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 30",
+      "dimensions_m": [
+        3.2713778782635927,
+        2.239817986264825,
+        2.1238212939351797
+      ],
+      "projected_bbox_px": [
+        35.33050537109375,
+        37.379638671875
+      ],
+      "local_position": [
+        -4.9354448318481445,
+        6.245107173919678,
+        1.1351652145385742
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 31",
+      "dimensions_m": [
+        5.5495635606348515,
+        4.0483926422894,
+        2.438841387629509
+      ],
+      "projected_bbox_px": [
+        71.78799438476562,
+        60.09722900390625
+      ],
+      "local_position": [
+        -7.020073413848877,
+        3.004493236541748,
+        0.8056421279907227
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 32",
+      "dimensions_m": [
+        2.9623338486999273,
+        2.6451670564711094,
+        1.6084458911791444
+      ],
+      "projected_bbox_px": [
+        41.8638916015625,
+        42.40997314453125
+      ],
+      "local_position": [
+        -5.71999979019165,
+        2.3867762088775635,
+        0.624302327632904
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 33",
+      "dimensions_m": [
+        4.714675713330507,
+        3.1180682126432657,
+        1.9453217973932624
+      ],
+      "projected_bbox_px": [
+        49.52728271484375,
+        49.048095703125
+      ],
+      "local_position": [
+        -6.020063877105713,
+        3.2801926136016846,
+        0.8550388216972351
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 34",
+      "dimensions_m": [
+        2.550747711211443,
+        2.3072112817317247,
+        2.081126207485795
+      ],
+      "projected_bbox_px": [
+        33.4454345703125,
+        37.014892578125
+      ],
+      "local_position": [
+        -6.29154634475708,
+        5.735948085784912,
+        1.2793766260147095
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 35",
+      "dimensions_m": [
+        2.5506713427603245,
+        1.6488841501995921,
+        1.6159085789695382
+      ],
+      "projected_bbox_px": [
+        27.4609375,
+        30.34710693359375
+      ],
+      "local_position": [
+        -5.1570234298706055,
+        3.3836121559143066,
+        0.7797856330871582
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 36",
+      "dimensions_m": [
+        5.838682875037193,
+        3.725329879671335,
+        2.871464705094695
+      ],
+      "projected_bbox_px": [
+        64.93856811523438,
+        68.91143798828125
+      ],
+      "local_position": [
+        -6.79044246673584,
+        3.8733057975769043,
+        0.9719519019126892
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 37",
+      "dimensions_m": [
+        2.667585387825966,
+        2.3208328057080507,
+        1.3429454993456602
+      ],
+      "projected_bbox_px": [
+        31.26788330078125,
+        34.70758056640625
+      ],
+      "local_position": [
+        -3.756601572036743,
+        3.2507379055023193,
+        0.5630671381950378
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 38",
+      "dimensions_m": [
+        4.91667166352272,
+        3.934901673346758,
+        2.546492498368025
+      ],
+      "projected_bbox_px": [
+        64.39306640625,
+        59.260986328125
+      ],
+      "local_position": [
+        -5.882543563842773,
+        4.696863651275635,
+        1.0623037815093994
+      ],
+      "mesh": "Icosphere.003"
+    },
+    {
+      "name": "Afloramiento · 39",
+      "dimensions_m": [
+        3.7988084368407726,
+        2.2648696321994066,
+        2.0813404116779566
+      ],
+      "projected_bbox_px": [
+        44.08050537109375,
+        30.98504638671875
+      ],
+      "local_position": [
+        -6.224186420440674,
+        5.003586292266846,
+        1.1541112661361694
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 40",
+      "dimensions_m": [
+        4.784000106155872,
+        3.376397769898176,
+        2.9266478959470987
+      ],
+      "projected_bbox_px": [
+        60.06402587890625,
+        60.958740234375
+      ],
+      "local_position": [
+        -3.775001287460327,
+        3.58493971824646,
+        0.60874342918396
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 41",
+      "dimensions_m": [
+        4.209474194794893,
+        3.7177347112447023,
+        2.187818055972457
+      ],
+      "projected_bbox_px": [
+        41.4674072265625,
+        46.5792236328125
+      ],
+      "local_position": [
+        -4.345378875732422,
+        5.497501373291016,
+        0.9977911114692688
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 42",
+      "dimensions_m": [
+        3.9538946002721786,
+        2.36836657859385,
+        1.5617929166182876
+      ],
+      "projected_bbox_px": [
+        46.9111328125,
+        46.9056396484375
+      ],
+      "local_position": [
+        -6.712872505187988,
+        2.2904231548309326,
+        0.7045279145240784
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 43",
+      "dimensions_m": [
+        2.6888258289545774,
+        1.8207483226433396,
+        1.1704872595146298
+      ],
+      "projected_bbox_px": [
+        23.714599609375,
+        31.52191162109375
+      ],
+      "local_position": [
+        -4.493987560272217,
+        4.179722309112549,
+        0.8083251714706421
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 44",
+      "dimensions_m": [
+        2.6608400512486696,
+        2.2009918466210365,
+        1.9105158280581236
+      ],
+      "projected_bbox_px": [
+        35.3865966796875,
+        40.0128173828125
+      ],
+      "local_position": [
+        -4.715385913848877,
+        2.884667158126831,
+        0.6071619987487793
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 45",
+      "dimensions_m": [
+        2.334727207198739,
+        1.8131604883819818,
+        1.34606147184968
+      ],
+      "projected_bbox_px": [
+        28.8118896484375,
+        28.371337890625
+      ],
+      "local_position": [
+        -2.47582745552063,
+        3.8644111156463623,
+        0.5463153123855591
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 46",
+      "dimensions_m": [
+        3.2729837112128735,
+        2.7832991909235716,
+        1.821755664423108
+      ],
+      "projected_bbox_px": [
+        44.3095703125,
+        40.95269775390625
+      ],
+      "local_position": [
+        -4.6551947593688965,
+        5.027395248413086,
+        0.9909108877182007
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 47",
+      "dimensions_m": [
+        4.711990710347891,
+        3.3637937158346176,
+        2.9131919145584106
+      ],
+      "projected_bbox_px": [
+        35.282958984375,
+        50.92138671875
+      ],
+      "local_position": [
+        -5.843449115753174,
+        4.9984450340271,
+        1.1103750467300415
+      ],
+      "mesh": "Icosphere"
+    },
+    {
+      "name": "Afloramiento · 48",
+      "dimensions_m": [
+        5.0795418210327625,
+        3.3486755564808846,
+        2.45278375223279
+      ],
+      "projected_bbox_px": [
+        58.7874755859375,
+        46.3170166015625
+      ],
+      "local_position": [
+        -3.71370792388916,
+        5.30573034286499,
+        0.8613153100013733
+      ],
+      "mesh": "Icosphere.001"
+    },
+    {
+      "name": "Afloramiento · 49",
+      "dimensions_m": [
+        3.117423504590988,
+        2.222261857241392,
+        1.6248887404799461
+      ],
+      "projected_bbox_px": [
+        35.55517578125,
+        31.9053955078125
+      ],
+      "local_position": [
+        -5.3484697341918945,
+        3.0807244777679443,
+        0.7373480796813965
+      ],
+      "mesh": "Icosphere.002"
+    },
+    {
+      "name": "Afloramiento · 50",
+      "dimensions_m": [
+        5.181306973099709,
+        3.843890968710184,
+        3.5658113192766905
+      ],
+      "projected_bbox_px": [
+        59.4266357421875,
+        60.0994873046875
+      ],
+      "local_position": [
+        -6.320879936218262,
+        4.34800910949707,
+        1.0416855812072754
+      ],
+      "mesh": "Icosphere.003"
+    }
+  ],
+  "images": [
+    {
+      "name": "cipres_ramillete.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "corteza_cipres.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "corteza_gris.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "corteza_madera_normal",
+      "size": [
+        512,
+        512
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "corteza_madera_normal.001",
+      "size": [
+        512,
+        512
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "corteza_madera_normal.002",
+      "size": [
+        512,
+        512
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "corteza_madera_normal.004",
+      "size": [
+        512,
+        512
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "corteza_normal.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "corteza_normal.png.001",
+      "size": [
+        1024,
+        1024
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "forest_ground_04_color.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "forest_ground_04_height.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "forest_ground_04_normal.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "forest_ground_04_roughness.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "grass_ground_color.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "grass_ground_height.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "grass_ground_normal.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "grass_ground_roughness.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "gravel_road_color.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "gravel_road_height.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "gravel_road_normal.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "gravel_road_roughness.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "gravelly_sand_color.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "gravelly_sand_height.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "gravelly_sand_normal.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "gravelly_sand_roughness.jpg",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "kloppenheim_06_puresky_2k.hdr",
+      "size": [
+        2048,
+        1024
+      ],
+      "colorspace": "Linear Rec.709",
+      "packed": true
+    },
+    {
+      "name": "lenga_ramillete.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "NaturalSurface_Meadow_2048",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "NaturalSurface_Roads_2048",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "piedra_normal",
+      "size": [
+        512,
+        512
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "piedra_normal.001",
+      "size": [
+        512,
+        512
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "piedra_normal.002",
+      "size": [
+        512,
+        512
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "piedra_normal.004",
+      "size": [
+        512,
+        512
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    }
+  ],
+  "terrain_material": {
+    "name": "Suelo natural · ripio, huellas, pastizal y tierra",
+    "channels": {
+      "Base Color": {
+        "immediate": [
+          "Pradera seca de altura.Color"
+        ],
+        "image_names": [
+          "NaturalSurface_Meadow_2048",
+          "NaturalSurface_Roads_2048",
+          "forest_ground_04_color.jpg",
+          "grass_ground_color.jpg",
+          "gravel_road_color.jpg",
+          "gravelly_sand_color.jpg"
+        ],
+        "node_names": [
+          "Pradera seca de altura",
+          "Exposición de la ladera",
+          "Separate XYZ.001",
+          "Texture Coordinate.003",
+          "Hierba entre rodadas",
+          "Desgaste: ripio / rodadas / centro vivo canales",
+          "Desgaste: ripio / rodadas / centro vivo",
+          "UV máscara de desgaste",
+          "Origen máscara",
+          "Coordenadas del terreno",
+          "Huellas de circulación",
+          "Rodadas suaves",
+          "Camino de ripio",
+          "Camino sobre tierra",
+          "Sólo superficie seca",
+          "Mantener orillas",
+          "Color Attribute",
+          "Calvas y banquinas",
+          "Tierra sobre suelo seco",
+          "Pradera: paja / tierra / variación canales",
+          "Pradera: paja / tierra / variación",
+          "Parches de pasto seco",
+          "Pasto seco en tierra",
+          "Mosaico del suelo",
+          "Fuerza de pastizal",
+          "Variación cromática de pradera",
+          "Map Range.001",
+          "Math",
+          "Separate Color",
+          "Hue/Saturation/Value.004",
+          "Mix (Legacy).002",
+          "Mix (Legacy).001",
+          "Mix (Legacy)",
+          "Hue/Saturation/Value",
+          "Image Texture",
+          "Vector Math",
+          "Texture Coordinate",
+          "Hue/Saturation/Value.001",
+          "Image Texture.004",
+          "Vector Math.001",
+          "Hue/Saturation/Value.002",
+          "Image Texture.008",
+          "Vector Math.002",
+          "Hue/Saturation/Value.003",
+          "Image Texture.012",
+          "Vector Math.003",
+          "Color Ramp",
+          "Manchas naturales de pradera",
+          "Texture Coordinate.002",
+          "Manchas grandes de pastizal",
+          "Tierra expuesta",
+          "Motas del camino",
+          "Mineral beige gris",
+          "Ripio cálido desaturado",
+          "Ripio irregular",
+          "Humedad y grano de ripio"
+        ]
+      },
+      "Roughness": {
+        "immediate": [
+          "Rugosidad de suelo.Color"
+        ],
+        "image_names": [
+          "NaturalSurface_Roads_2048"
+        ],
+        "node_names": [
+          "Rugosidad de suelo",
+          "Desgaste: ripio / rodadas / centro vivo canales",
+          "Desgaste: ripio / rodadas / centro vivo",
+          "UV máscara de desgaste",
+          "Origen máscara",
+          "Coordenadas del terreno"
+        ]
+      },
+      "Normal": {
+        "immediate": [
+          "Microrelieve de grava y terrones.Normal"
+        ],
+        "image_names": [
+          "forest_ground_04_height.jpg",
+          "grass_ground_height.jpg",
+          "gravel_road_height.jpg",
+          "gravelly_sand_height.jpg"
+        ],
+        "node_names": [
+          "Microrelieve de grava y terrones",
+          "Humedad y grano de ripio",
+          "Coordenadas del terreno",
+          "Bump",
+          "Mix (Legacy).011",
+          "Separate Color",
+          "Color Attribute",
+          "Mix (Legacy).010",
+          "Mix (Legacy).009",
+          "Image Texture.003",
+          "Vector Math",
+          "Texture Coordinate",
+          "Image Texture.007",
+          "Vector Math.001",
+          "Image Texture.011",
+          "Vector Math.002",
+          "Image Texture.015",
+          "Vector Math.003"
+        ]
+      }
+    },
+    "noise": [
+      {
+        "name": "Manchas naturales de pradera",
+        "scale": 1.7000000476837158,
+        "detail": 4.0,
+        "vector_linked": true
+      },
+      {
+        "name": "Humedad y grano de ripio",
+        "scale": 20.0,
+        "detail": 3.0,
+        "vector_linked": true
+      }
+    ],
+    "bump": [
+      {
+        "name": "Bump",
+        "distance": 0.00023999999393709004,
+        "strength": 0.6000000238418579
+      },
+      {
+        "name": "Microrelieve de grava y terrones",
+        "distance": 9.999999747378752e-05,
+        "strength": 0.3799999952316284
+      }
+    ],
+    "roughness_default": 0.5
+  },
+  "rock_material": {
+    "name": "Roca gris · ladera expuesta",
+    "channels": {
+      "Base Color": {
+        "immediate": [
+          "Color Ramp.Color"
+        ],
+        "image_names": [],
+        "node_names": [
+          "Color Ramp",
+          "Noise Texture"
+        ]
+      },
+      "Roughness": {
+        "immediate": [],
+        "image_names": [],
+        "node_names": []
+      },
+      "Normal": {
+        "immediate": [
+          "Bump.Normal"
+        ],
+        "image_names": [],
+        "node_names": [
+          "Bump",
+          "Noise Texture"
+        ]
+      }
+    },
+    "noise": [
+      {
+        "name": "Noise Texture",
+        "scale": 7.0,
+        "detail": 4.0,
+        "vector_linked": false
+      }
+    ],
+    "bump": [
+      {
+        "name": "Bump",
+        "distance": 0.0001500000071246177,
+        "strength": 0.2800000011920929
+      }
+    ],
+    "roughness_default": 0.9300000071525574
+  }
+}
