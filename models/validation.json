@@ -1,7 +1,7 @@
 [
   {
     "file": "bosque.glb",
-    "bytes": 4503244,
+    "bytes": 3850840,
     "errors": 0,
     "warnings": 0,
     "colorPrimitives": [
@@ -11,24 +11,31 @@
       true,
       true
     ],
+    "primaryPalettePresent": true,
     "issues": [
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/3/attributes/TANGENT"
+        "pointer": "/meshes/0/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/4/attributes/TANGENT"
+        "pointer": "/meshes/3/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/4/primitives/0/attributes/TANGENT"
       }
     ]
   },
   {
     "file": "caserio.glb",
-    "bytes": 2646988,
+    "bytes": 2265132,
     "errors": 0,
     "warnings": 0,
     "colorPrimitives": [
@@ -40,24 +47,31 @@
       true,
       true
     ],
+    "primaryPalettePresent": true,
     "issues": [
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/5/attributes/TANGENT"
+        "pointer": "/meshes/0/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/6/attributes/TANGENT"
+        "pointer": "/meshes/5/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/6/primitives/0/attributes/TANGENT"
       }
     ]
   },
   {
     "file": "laguna.glb",
-    "bytes": 2728560,
+    "bytes": 2059324,
     "errors": 0,
     "warnings": 0,
     "colorPrimitives": [
@@ -67,18 +81,25 @@
       true,
       true
     ],
+    "primaryPalettePresent": true,
     "issues": [
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/4/attributes/TANGENT"
+        "pointer": "/meshes/0/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/4/primitives/0/attributes/TANGENT"
       }
     ]
   },
   {
     "file": "montana.glb",
-    "bytes": 2919896,
+    "bytes": 2561068,
     "errors": 0,
     "warnings": 0,
     "colorPrimitives": [
@@ -87,18 +108,25 @@
       true,
       true
     ],
+    "primaryPalettePresent": true,
     "issues": [
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/3/attributes/TANGENT"
+        "pointer": "/meshes/0/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/3/primitives/0/attributes/TANGENT"
       }
     ]
   },
   {
     "file": "paisaje_demo.glb",
-    "bytes": 9499576,
+    "bytes": 9185848,
     "errors": 0,
     "warnings": 0,
     "colorPrimitives": [
@@ -140,78 +168,121 @@
       true,
       true
     ],
+    "primaryPalettePresent": true,
     "issues": [
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/3/attributes/TANGENT"
+        "pointer": "/meshes/0/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/4/attributes/TANGENT"
+        "pointer": "/meshes/3/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/1/primitives/5/attributes/TANGENT"
+        "pointer": "/meshes/4/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/1/primitives/6/attributes/TANGENT"
+        "pointer": "/meshes/5/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/2/primitives/4/attributes/TANGENT"
+        "pointer": "/meshes/10/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/3/primitives/3/attributes/TANGENT"
+        "pointer": "/meshes/11/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/4/primitives/3/attributes/TANGENT"
+        "pointer": "/meshes/12/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/5/primitives/4/attributes/TANGENT"
+        "pointer": "/meshes/16/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/5/primitives/5/attributes/TANGENT"
+        "pointer": "/meshes/17/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/6/primitives/4/attributes/TANGENT"
+        "pointer": "/meshes/20/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/6/primitives/5/attributes/TANGENT"
+        "pointer": "/meshes/21/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/24/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/25/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/29/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/30/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/31/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/35/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/36/primitives/0/attributes/TANGENT"
       }
     ]
   },
   {
     "file": "pradera.glb",
-    "bytes": 1719576,
+    "bytes": 1252076,
     "errors": 0,
     "warnings": 0,
     "colorPrimitives": [
@@ -220,18 +291,25 @@
       true,
       true
     ],
+    "primaryPalettePresent": true,
     "issues": [
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/3/attributes/TANGENT"
+        "pointer": "/meshes/0/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/3/primitives/0/attributes/TANGENT"
       }
     ]
   },
   {
     "file": "rio_curvo.glb",
-    "bytes": 2645188,
+    "bytes": 2009288,
     "errors": 0,
     "warnings": 0,
     "colorPrimitives": [
@@ -242,24 +320,31 @@
       true,
       true
     ],
+    "primaryPalettePresent": true,
     "issues": [
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/4/attributes/TANGENT"
+        "pointer": "/meshes/0/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/5/attributes/TANGENT"
+        "pointer": "/meshes/4/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/5/primitives/0/attributes/TANGENT"
       }
     ]
   },
   {
     "file": "rio_recto.glb",
-    "bytes": 2647004,
+    "bytes": 2004168,
     "errors": 0,
     "warnings": 0,
     "colorPrimitives": [
@@ -270,18 +355,25 @@
       true,
       true
     ],
+    "primaryPalettePresent": true,
     "issues": [
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/4/attributes/TANGENT"
+        "pointer": "/meshes/0/primitives/0/attributes/TANGENT"
       },
       {
         "code": "UNUSED_MESH_TANGENT",
         "message": "Tangents are not used because the material has no normal texture.",
         "severity": 2,
-        "pointer": "/meshes/0/primitives/5/attributes/TANGENT"
+        "pointer": "/meshes/4/primitives/0/attributes/TANGENT"
+      },
+      {
+        "code": "UNUSED_MESH_TANGENT",
+        "message": "Tangents are not used because the material has no normal texture.",
+        "severity": 2,
+        "pointer": "/meshes/5/primitives/0/attributes/TANGENT"
       }
     ]
   }

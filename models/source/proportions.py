@@ -42,9 +42,11 @@ def cabin(m,x,y,scale=1,angle=0,roof='roof'):
     m.tube((0,-rd,ridge+.005),(0,rd,ridge+.005),.0035,tint(roof,1.08),6)
     # Both houses use the same 0.90 x 2.10 m door and 1.2 m windows.
     door_x=w*.23
-    m.box((door_x,-d/2-.002,floor+.0525),(.045,.004,.105),'wood_dark')
-    m.box((door_x,-d/2-.005,floor+.0525),(.036,.003,.096),'wood')
-    m.box((door_x+.013,-d/2-.007,floor+.052),(.003,.002,.003),'stone_dark')
+    def front_door(base):
+        m.box((door_x,-d/2-.002,base+.0525),(.045,.004,.105),'wood_dark')
+        m.box((door_x,-d/2-.005,base+.0525),(.036,.003,.096),'wood')
+        m.box((door_x+.013,-d/2-.007,base+.052),(.003,.002,.003),'stone_dark')
+    front_door(floor)
     def front_window(xx,z):
         m.box((xx,-d/2-.002,z),(.067,.005,.065),'wood_dark')
         m.box((xx,-d/2-.005,z),(.055,.002,.054),'window')
@@ -53,7 +55,8 @@ def cabin(m,x,y,scale=1,angle=0,roof='roof'):
         m.box((xx,-d/2-.009,z-.034),(.077,.016,.003),'wood')
     front_window(-w*.25,.100)
     if two_storeys:
-        for xx in [-w*.25,w*.23]:front_window(xx,.237)
+        front_window(-w*.25,.237)
+        front_door(.167)
     for yy in [-d*.27,d*.27]:
         for z in ([.10,.237] if two_storeys else [.10]):
             m.box((w/2+.002,yy,z),(.005,.067,.065),'wood_dark')
@@ -67,7 +70,13 @@ def cabin(m,x,y,scale=1,angle=0,roof='roof'):
         m.box((0,-d/2-.052,z),(w,.105,.008),'wood')
         for j in range(8):m.box((0,-d/2-.004-j*.013,z+.0044),(w,.0008,.0008),'wood_dark')
         for xx in [-w/2+.012,w/2-.012]:m.box((xx,front,z+.027),(.005,.005,.054),'wood_dark')
-        m.box((0,front,z+.054),(w,.004,.004),'wood_dark')
+        if z<.1:
+            for left,right in [(-w/2,door_x-.037),(door_x+.037,w/2)]:
+                m.box(((left+right)/2,front,z+.054),(right-left,.004,.004),'wood_dark')
+            for xx in [door_x-.037,door_x+.037]:
+                m.box((xx,front,z+.027),(.005,.005,.054),'wood_dark')
+        else:
+            m.box((0,front,z+.054),(w,.004,.004),'wood_dark')
         for j in range(1,12):
             xx=-w/2+w*j/12
             # Open the ground-floor railing in front of the door.

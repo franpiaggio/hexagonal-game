@@ -10,10 +10,16 @@ N=512
 rng=np.random.default_rng(72)
 
 def noise_field():
+    # Periodic spectral noise keeps opposite texture edges continuous.
+    fy=np.fft.fftfreq(N)[:,None];fx=np.fft.rfftfreq(N)[None,:]
+    frequency=fx*fx+fy*fy
     result=np.zeros((N,N),dtype=float)
-    for size,weight in [(4,.35),(12,.24),(40,.20),(128,.13),(512,.08)]:
-        small=Image.fromarray((rng.random((size,size))*255).astype('uint8'))
-        result+=np.asarray(small.resize((N,N),Image.Resampling.BICUBIC))/255*weight
+    for cells,weight in [(4,.35),(12,.24),(40,.20),(128,.13),(512,.08)]:
+        spectrum=np.fft.rfft2(rng.standard_normal((N,N)))
+        sigma=N/cells/3
+        band=np.fft.irfft2(spectrum*np.exp(-2*math.pi**2*sigma**2*frequency),s=(N,N))
+        band=.5+band/max(band.std()*6,1e-9)
+        result+=np.clip(band,0,1)*weight
     return result
 
 def surface(name,variation=.25,grain=0):
@@ -28,7 +34,7 @@ def surface(name,variation=.25,grain=0):
     normal/=np.linalg.norm(normal,axis=-1,keepdims=True)
     Image.fromarray(np.uint8((normal*.5+.5)*255)).save(OUT/f'{name}_normal.png')
 
-surface('suelo',.58)
+surface('suelo',.38)
 surface('corteza_madera',.38,.7)
 surface('piedra',.55)
 surface('agua',.16,.7)

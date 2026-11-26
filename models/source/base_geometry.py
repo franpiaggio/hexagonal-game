@@ -111,7 +111,7 @@ def ground(m):
                     x=sum(t[0] for t in tri)/3; y=sum(t[1] for t in tri)/3
                     edge=min(A-x*math.cos(j*TAU/6)-y*math.sin(j*TAU/6) for j in range(6))
                     f=1+min(1,edge/.35)*(.018*math.sin(5*x+2*y)+.016*math.sin(2*x-4*y))
-                    m.face(tri,tint('grass',f))
+                    m.face(tri,'grass')
     m.face([(x,y,-.12) for x,y in reversed(verts)],'earth_dark')
 
 def patch(m,x,y,rx,ry,color,z=.006,n=11):
@@ -367,7 +367,7 @@ for kind,obj in assets.items():
     bpy.ops.object.select_all(action='DESELECT')
     obj.select_set(True); bpy.context.view_layer.objects.active=obj
     bpy.ops.export_scene.gltf(filepath=str(OUT/'glb'/f'{kind}.glb'),export_format='GLB',use_selection=True,use_active_scene=True,
-                              export_yup=True,export_tangents=True,export_extras=True,export_materials='EXPORT',export_cameras=False,export_lights=False)
+                              export_yup=True,export_tangents=True,export_vertex_color='NAME',export_vertex_color_name='Color',export_all_vertex_colors=False,export_extras=True,export_materials='EXPORT',export_cameras=False,export_lights=False)
 library.hide_render=True
 library.hide_viewport=True
 
@@ -394,7 +394,7 @@ bpy.ops.object.select_all(action='DESELECT')
 for ob in demo.objects: ob.select_set(True)
 bpy.context.view_layer.objects.active=next(iter(demo.objects))
 bpy.ops.export_scene.gltf(filepath=str(OUT/'glb'/'paisaje_demo.glb'),export_format='GLB',use_selection=True,use_active_scene=True,
-                          export_yup=True,export_tangents=True,export_extras=True,export_materials='EXPORT',export_cameras=False,export_lights=False)
+                          export_yup=True,export_tangents=True,export_vertex_color='NAME',export_vertex_color_name='Color',export_all_vertex_colors=False,export_extras=True,export_materials='EXPORT',export_cameras=False,export_lights=False)
 
 presentation=bpy.data.collections.new('03 · Cámara y estudio (no exportar)')
 scene.collection.children.link(presentation)

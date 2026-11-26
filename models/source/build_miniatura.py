@@ -24,12 +24,12 @@ def material(name,texture,roughness=.85,normal=None,cutout=False):
     nodes=material.node_tree.nodes; links=material.node_tree.links
     bs=nodes.get('Principled BSDF'); bs.inputs['Roughness'].default_value=roughness
     bs.inputs['Specular IOR Level'].default_value=.3
-    tex=nodes.new('ShaderNodeTexImage'); tex.image=bpy.data.images.load(str(OUT/'textures'/texture),check_existing=True); tex.image.pack()
+    tex=nodes.new('ShaderNodeTexImage'); tex.image=bpy.data.images.load(str(OUT/'textures'/texture),check_existing=True); tex.image.reload();tex.image.pack()
     color=nodes.new('ShaderNodeVertexColor');color.layer_name='Color'
-    multiply=nodes.new('ShaderNodeMixRGB');multiply.blend_type='MULTIPLY';multiply.inputs[0].default_value=1
-    links.new(tex.outputs['Color'],multiply.inputs[1]);links.new(color.outputs['Color'],multiply.inputs[2]);links.new(multiply.outputs[0],bs.inputs['Base Color'])
+    multiply=nodes.new('ShaderNodeMix');multiply.data_type='RGBA';multiply.blend_type='MULTIPLY';multiply.inputs[0].default_value=1
+    links.new(tex.outputs['Color'],multiply.inputs[6]);links.new(color.outputs['Color'],multiply.inputs[7]);links.new(multiply.outputs[2],bs.inputs['Base Color'])
     if normal:
-        texn=nodes.new('ShaderNodeTexImage');texn.image=bpy.data.images.load(str(OUT/'textures'/normal),check_existing=True);texn.image.colorspace_settings.name='Non-Color';texn.image.pack()
+        texn=nodes.new('ShaderNodeTexImage');texn.image=bpy.data.images.load(str(OUT/'textures'/normal),check_existing=True);texn.image.colorspace_settings.name='Non-Color';texn.image.reload();texn.image.pack()
         nm=nodes.new('ShaderNodeNormalMap');nm.inputs['Strength'].default_value=.55
         links.new(texn.outputs['Color'],nm.inputs['Color']);links.new(nm.outputs['Normal'],bs.inputs['Normal'])
     if cutout:
@@ -39,7 +39,7 @@ def material(name,texture,roughness=.85,normal=None,cutout=False):
     materials.append(material)
     return len(materials)-1
 
-SOIL=material('suelo y pasto','suelo.png',.96,'suelo_normal.png')
+SOIL=material('suelo y pasto','suelo.png',.96)
 TIMBER=material('madera','corteza_madera.png',.77,'corteza_madera_normal.png')
 STONE=material('roca y revoque','piedra.png',.89,'piedra_normal.png')
 METAL=material('techo de chapa','corteza_madera.png',.52,'corteza_madera_normal.png')
@@ -189,6 +189,41 @@ def rock(m,x,y,s=.13):
 
 exec(compile((SCRIPT.with_name('proportions.py')).read_text(),'proportions.py','exec'))
 
+def export_tiles_glb(**options):
+    # Blender 5.2 can replace COLOR_0 with white on later material slots.
+    # Export one material per mesh; Three.js already draws one part per material.
+    selected=list(bpy.context.selected_objects)
+    active=bpy.context.view_layer.objects.active
+    temporary=bpy.data.collections.new('Export parts')
+    bpy.context.scene.collection.children.link(temporary)
+    parts=[];cache={}
+    try:
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in selected:
+            if obj.type!='MESH':continue
+            for slot in sorted({p.material_index for p in obj.data.polygons}):
+                key=(obj.data.as_pointer(),slot)
+                if key not in cache:
+                    data=obj.data.copy();bm=bmesh.new();bm.from_mesh(data)
+                    bmesh.ops.delete(bm,geom=[f for f in bm.faces if f.material_index!=slot],context='FACES')
+                    bmesh.ops.delete(bm,geom=[v for v in bm.verts if not v.link_faces],context='VERTS')
+                    for face in bm.faces:face.material_index=0
+                    bm.to_mesh(data);bm.free()
+                    data.materials.clear();data.materials.append(obj.data.materials[slot]);data.update()
+                    cache[key]=data
+                part=obj.copy();part.data=cache[key];part.name=f'{obj.name} / {slot}'
+                temporary.objects.link(part);part.matrix_world=obj.matrix_world.copy()
+                part.hide_viewport=False;part.hide_render=False;part.hide_set(False);part.select_set(True)
+                parts.append(part)
+        if parts:bpy.context.view_layer.objects.active=parts[0]
+        return bpy.ops.export_scene.gltf(**options)
+    finally:
+        for part in parts:bpy.data.objects.remove(part,do_unlink=True)
+        for data in cache.values():bpy.data.meshes.remove(data)
+        bpy.data.collections.remove(temporary)
+        for obj in selected:obj.select_set(True)
+        bpy.context.view_layer.objects.active=active
+
 # Build the same topology and layout with corrected proportions.
 assembly=assembly.replace('PATAGONIA · verano / set base','PATAGONIA · proporciones realistas')
 assembly=assembly.replace('PATAGONIA · catálogo de piezas','PATAGONIA · catálogo proporcionado')
@@ -196,6 +231,7 @@ assembly=assembly.replace('patagonia_base.blend','patagonia_miniatura.blend')
 assembly=assembly.replace("'Patagonia · verano / base 01'","'Patagonia · miniatura / proporciones 03'")
 assembly=assembly.replace("scene.cycles.samples=40","scene.cycles.samples=40")
 assembly=assembly.replace("area.spaces.active.shading.type='MATERIAL'","area.spaces.active.shading.type='MATERIAL'")
+assembly=assembly.replace('bpy.ops.export_scene.gltf(', 'export_tiles_glb(')
 exec(compile(assembly,'assemble_miniatura.py','exec'))
 
 # Display shrink factor .04 represents a physical landscape miniature at 1:500.

@@ -10,9 +10,9 @@
  * The GLBs contain geometry, vertex colors and embedded textures; camera blur is separate.
  * The Blender preview uses AgX, soft sunlight, and depth of field.
  *
- * Seven tiles, radius 2, ground at Y=0, bottom at Y=-0.26, Y-up.
+ * Seven tiles, radius 2, ground at Y=0, bottom at Y=-0.12, Y-up.
  * Pointy-top hex grid; rotation steps are 60 degrees around Y.
- * Tiles use textured PBR materials and alpha-tested foliage, 2,139–23,760 triangles.
+ * Tiles use textured PBR materials and alpha-tested foliage; triangle counts are in manifest.json.
  * Keep the supplied vertex colors when changing materials.
  * Materials/geometries are shared between clones: dispose them once per kit.
  *
